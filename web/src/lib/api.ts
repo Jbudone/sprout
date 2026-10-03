@@ -44,8 +44,18 @@ export type Feedback = {
 
 export type QuizStatus = 'unanswered' | 'answered' | 'skipped';
 
+export type DeckRef = { id: string; name: string; domain: string };
+
+export type Deck = DeckRef & {
+  description: string | null;
+  createdAt: string;
+  cardCount: number;
+};
+
 export type QuizListItem<T> = {
   item: T;
+  // Set for trivia cards; math problems don't belong to a deck.
+  deck: DeckRef | null;
   status: QuizStatus;
   chosenAnswer: string | null;
   correct: boolean | null;
@@ -67,7 +77,13 @@ export type ContentLibraryResult = {
   message: string;
   stats?: ContentLibraryStats;
   ids?: string[];
-  items?: Array<{ id: string; weekNumber: number; category: string; qualityScore: string | number; eloRating?: number }>;
+  items?: Array<{
+    id: string;
+    weekNumber: number;
+    category: string;
+    qualityScore: string | number;
+    eloRating?: number;
+  }>;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -85,6 +101,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function listQuiz<T>(kind: Kind): Promise<{ items: QuizListItem<T>[] }> {
   return request(`/${kind}`);
+}
+
+export function listDecks(): Promise<{ decks: Deck[] }> {
+  return request('/trivia/decks');
 }
 
 export function answerQuiz(
@@ -125,7 +145,9 @@ export function resetProgress(kind?: Kind): Promise<{ success: boolean }> {
   });
 }
 
-export async function getContentLibraryStats(kind: Kind): Promise<ContentLibraryResult> {
+export async function getContentLibraryStats(
+  kind: Kind,
+): Promise<ContentLibraryResult> {
   return request(`/library/stats/${kind}`, { method: 'GET' });
 }
 
@@ -133,11 +155,17 @@ export async function getContentLibraryAllIds(): Promise<ContentLibraryResult> {
   return request('/library/all-ids', { method: 'GET' });
 }
 
-export async function getContentLibraryRecent(kind: Kind): Promise<ContentLibraryResult> {
+export async function getContentLibraryRecent(
+  kind: Kind,
+): Promise<ContentLibraryResult> {
   return request(`/library/recent/${kind}`, { method: 'GET' });
 }
 
-export async function getContentLibraryByQuality(kind: Kind, minScore?: number, maxScore?: number): Promise<ContentLibraryResult> {
+export async function getContentLibraryByQuality(
+  kind: Kind,
+  minScore?: number,
+  maxScore?: number,
+): Promise<ContentLibraryResult> {
   const params = new URLSearchParams();
   if (minScore !== undefined) params.append('minScore', minScore.toString());
   if (maxScore !== undefined) params.append('maxScore', maxScore.toString());

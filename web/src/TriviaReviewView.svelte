@@ -65,7 +65,7 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
   {:else}
     <div class="flex items-center justify-between text-xs text-gray-400">
       <span>{index + 1} / {items.length}</span>
-      <span>{current.item.category} · elo {current.item.eloRating}</span>
+      <span>{current.deck?.name ?? current.item.category} · elo {current.item.eloRating}</span>
     </div>
 
     <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">

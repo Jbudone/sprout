@@ -2,7 +2,8 @@ import { createRoute } from '@mastra/server/server-adapter';
 import { z } from 'zod';
 import { MathProblemSchema, TriviaCardSchema } from '../schemas/quiz';
 import { getFeedbackForKind, getProgressForKind, recordFeedback, recordProgress, resetProgress } from './db';
-import { getMathProblemById, getTriviaCardById, listMathProblems, listTriviaCards } from './content';
+import { getMathProblemById, getTriviaCardById, listMathProblems } from './content';
+import { listDecks, listTriviaEntries } from './content-db';
 
 const KindParamSchema = z.object({ kind: z.enum(['math', 'trivia']) });
 const KindItemParamSchema = z.object({ kind: z.enum(['math', 'trivia']), itemId: z.string() });
@@ -13,8 +14,12 @@ const FeedbackEnvelopeSchema = z.object({
   notes: z.string().nullable(),
 });
 
+const DeckRefSchema = z.object({ id: z.string(), name: z.string(), domain: z.string() });
+
 const QuizListItemSchema = z.object({
   item: z.union([MathProblemSchema, TriviaCardSchema]),
+  // Trivia cards belong to a deck; math problems don't (yet).
+  deck: DeckRefSchema.nullable(),
   status: z.enum(['unanswered', 'answered', 'skipped']),
   chosenAnswer: z.string().nullable(),
   correct: z.boolean().nullable(),
@@ -35,18 +40,21 @@ const listQuizRoute = createRoute({
   tags: ['Quiz'],
   requiresAuth: false,
   handler: async ({ kind }) => {
-    const [items, progress, feedback] = await Promise.all([
-      kind === 'math' ? listMathProblems() : listTriviaCards(),
+    const [entries, progress, feedback] = await Promise.all([
+      kind === 'math'
+        ? listMathProblems().then(items => items.map(item => ({ item, deck: null })))
+        : listTriviaEntries().then(items => items.map(e => ({ item: e.card, deck: e.deck }))),
       getProgressForKind(kind),
       getFeedbackForKind(kind),
     ]);
 
     return {
-      items: items.map(item => {
+      items: entries.map(({ item, deck }) => {
         const p = progress.get(item.id);
         const f = feedback.get(item.id);
         return {
           item,
+          deck,
           status: p?.status ?? ('unanswered' as const),
           chosenAnswer: p?.chosenAnswer ?? null,
           correct: p?.correct ?? null,
@@ -55,6 +63,26 @@ const listQuizRoute = createRoute({
       }),
     };
   },
+});
+
+const DeckSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  domain: z.string(),
+  description: z.string().nullable(),
+  createdAt: z.string(),
+  cardCount: z.number(),
+});
+
+const listDecksRoute = createRoute({
+  method: 'GET',
+  path: '/quiz/trivia/decks',
+  responseType: 'json',
+  responseSchema: z.object({ decks: z.array(DeckSchema) }),
+  summary: 'List trivia decks with their domain and card count',
+  tags: ['Quiz'],
+  requiresAuth: false,
+  handler: async () => ({ decks: await listDecks() }),
 });
 
 const answerQuizRoute = createRoute({
@@ -140,4 +168,4 @@ const resetQuizRoute = createRoute({
   },
 });
 
-export const quizApiRoutes = [listQuizRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];
+export const quizApiRoutes = [listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];

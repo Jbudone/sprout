@@ -4,6 +4,7 @@ import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { TriviaCardSchema, MathProblemSchema } from '../schemas/quiz';
 import { getRepoRoot } from '../utils/repo-root';
+import { addTriviaCard, defaultDeckForCard } from '../quiz/content-db';
 import { verifyTriviaTool } from '../tools/verify-trivia';
 import { verifyMathTool } from '../tools/verify-math';
 import { contentQualityAgent } from '../agents/content-quality';
@@ -223,7 +224,15 @@ const persistStep = createStep({
 
     const root = await getContentRoot();
     for (const item of inputData) {
-      if (item.verified && item.item) {
+      if (item.verified && item.item && item.kind === 'trivia') {
+        const card = TriviaCardSchema.parse(item.item);
+        try {
+          await addTriviaCard(card, defaultDeckForCard(card));
+          written.push(`deck:${defaultDeckForCard(card).id}/${card.id}`);
+        } catch (e) {
+          failed.push({ index: item.index, issues: [e instanceof Error ? e.message : String(e)] });
+        }
+      } else if (item.verified && item.item) {
         const kindRoot = path.join(root, item.kind);
         await mkdir(kindRoot, { recursive: true });
         const filePath = path.join(kindRoot, `week-${item.weekNumber}-${item.index}.json`);

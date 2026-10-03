@@ -14,6 +14,7 @@ import { verifyMathTool } from '../tools/verify-math';
 import { verifyTriviaTool } from '../tools/verify-trivia';
 import { getRepoRoot } from '../utils/repo-root';
 import { listMathProblems, listTriviaCards, pickLeastUsed } from '../quiz/content';
+import { addTriviaCard, defaultDeckForCard } from '../quiz/content-db';
 
 const MAX_CONTENT_ATTEMPTS = 3;
 
@@ -371,21 +372,21 @@ const triviaItemWorkflow = createWorkflow({
 
 const persistTriviaStep = createStep({
   id: 'persist-trivia',
-  description: 'Writes verified trivia cards to the content library; leaves unverified ones unwritten.',
+  description: 'Adds verified trivia cards to the deck for their category; leaves unverified ones unwritten.',
   inputSchema: z.array(TriviaCycleSchema),
   outputSchema: BatchResultSchema,
-  execute: async ({ inputData, getInitData }) => {
-    const { weekNumber } = getInitData<z.infer<typeof ContentRequestSchema>>();
+  execute: async ({ inputData }) => {
     const written: string[] = [];
     const failed: { index: number; issues: string[] }[] = [];
 
-    const triviaRoot = path.join(await getContentRoot(), 'trivia');
-    await mkdir(triviaRoot, { recursive: true });
     for (const item of inputData) {
       if (item.verified && item.card) {
-        const filePath = path.join(triviaRoot, `week-${weekNumber}-${item.index}.json`);
-        await writeFile(filePath, JSON.stringify(item.card, null, 2));
-        written.push(filePath);
+        try {
+          await addTriviaCard(item.card, defaultDeckForCard(item.card));
+          written.push(`deck:${defaultDeckForCard(item.card).id}/${item.card.id}`);
+        } catch (e) {
+          failed.push({ index: item.index, issues: [e instanceof Error ? e.message : String(e)] });
+        }
       } else {
         failed.push({ index: item.index, issues: item.issues });
       }

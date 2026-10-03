@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
-import { MathProblemSchema, TriviaCardSchema, type MathProblem, type TriviaCard } from '../schemas/quiz';
+import { MathProblemSchema, type MathProblem, type TriviaCard } from '../schemas/quiz';
 import { getRepoRoot } from '../utils/repo-root';
-import type { QuizKind } from './db';
+import { listTriviaEntries } from './content-db';
 
 const FILENAME_PATTERN = /^week-(\d+)-(\d+)\.json$/;
 
-async function listContentFiles(kind: QuizKind): Promise<string[]> {
+async function listContentFiles(kind: 'math'): Promise<string[]> {
   const dir = path.join(await getRepoRoot(), 'content', kind);
   const files = await readdir(dir).catch(() => [] as string[]);
 
@@ -26,9 +26,10 @@ export async function listMathProblems(): Promise<MathProblem[]> {
   return Promise.all(files.map(async f => MathProblemSchema.parse(JSON.parse(await readFile(f, 'utf-8')))));
 }
 
+// Trivia lives in content.db as decks of cards (see content-db.ts); math is
+// still one JSON file per problem.
 export async function listTriviaCards(): Promise<TriviaCard[]> {
-  const files = await listContentFiles('trivia');
-  return Promise.all(files.map(async f => TriviaCardSchema.parse(JSON.parse(await readFile(f, 'utf-8')))));
+  return (await listTriviaEntries()).map(e => e.card);
 }
 
 export async function getMathProblemById(id: string): Promise<MathProblem | undefined> {

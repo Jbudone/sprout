@@ -1,18 +1,33 @@
 <script lang="ts">
 import {
   answerQuiz,
+  type Deck,
+  listDecks,
   listQuiz,
   type QuizListItem,
   sendFeedback,
   skipQuiz,
   type TriviaCard,
 } from './lib/api';
+import DeckPicker from './lib/DeckPicker.svelte';
+import {
+  loadFilter,
+  matchesFilter,
+  saveFilter,
+  shuffleSeed,
+  validFilter,
+} from './lib/deckFilter';
 import FeedbackControl from './lib/FeedbackControl.svelte';
 import Latex from './lib/Latex.svelte';
 import { seededShuffle } from './lib/shuffle';
 import { swipeNav } from './lib/swipeNav';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
 
+let allItems = $state<QuizListItem<TriviaCard>[]>([]);
+let decks = $state<Deck[]>([]);
+let filter = $state(loadFilter());
+// The shuffled, filtered play queue. Built once per load/filter change (not
+// derived) so answering a card doesn't reshuffle the queue under the user.
 let items = $state<QuizListItem<TriviaCard>[]>([]);
 let index = $state(0);
 let loading = $state(true);
@@ -31,10 +46,39 @@ const options = $derived(
     : [],
 );
 
+// Cards from every deck, shuffled with a stable seed, narrowed to the picked
+// deck or domain. Starts at the first card not yet answered or skipped.
+function buildQueue() {
+  items = seededShuffle(
+    allItems.filter((i) => matchesFilter(i.deck, filter)),
+    shuffleSeed(),
+  );
+  const firstOpen = items.findIndex((i) => i.status === 'unanswered');
+  index = firstOpen === -1 ? items.length : firstOpen;
+  justAnswered = null;
+}
+
+// Writes an updated card to the play queue and to the unfiltered list, so
+// progress survives switching decks.
+function setCurrent(next: QuizListItem<TriviaCard>) {
+  items[index] = next;
+  const i = allItems.findIndex((a) => a.item.id === next.item.id);
+  if (i !== -1) allItems[i] = next;
+}
+
+function changeFilter(next: string) {
+  filter = next;
+  saveFilter(next);
+  buildQueue();
+}
+
 $effect(() => {
-  listQuiz<TriviaCard>('trivia')
-    .then((res) => {
-      items = res.items;
+  Promise.all([listQuiz<TriviaCard>('trivia'), listDecks()])
+    .then(([res, deckRes]) => {
+      allItems = res.items;
+      decks = deckRes.decks;
+      filter = validFilter(filter, decks);
+      buildQueue();
     })
     .catch((e) => {
       error = e instanceof Error ? e.message : String(e);
@@ -59,49 +103,53 @@ function next() {
 async function choose(option: string) {
   if (!current || current.status === 'answered') return;
   const result = await answerQuiz('trivia', current.item.id, option);
-  items[index] = {
+  setCurrent({
     ...current,
     status: 'answered',
     chosenAnswer: option,
     correct: result.correct,
-  };
+  });
   justAnswered = { correct: result.correct ?? false };
 }
 
 async function skip() {
   if (!current) return;
   await skipQuiz('trivia', current.item.id);
-  items[index] = { ...current, status: 'skipped' };
+  setCurrent({ ...current, status: 'skipped' });
   next();
 }
 
 async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
   if (!current) return;
   await sendFeedback('trivia', current.item.id, feedback);
-  items[index] = {
+  setCurrent({
     ...current,
     feedback: {
       difficulty: feedback.difficulty ?? null,
       reaction: feedback.reaction ?? null,
       notes: feedback.notes ?? null,
     },
-  };
+  });
 }
 </script>
 
 <div class="mx-auto flex max-w-md flex-col gap-4 p-4" use:swipeNav={{ onSwipeRight: goBack }}>
+  {#if decks.length > 0}
+    <DeckPicker {decks} value={filter} onChange={changeFilter} />
+  {/if}
+
   {#if loading}
     <p class="text-center text-gray-500">Loading…</p>
   {:else if error}
     <p class="text-center text-red-600">{error}</p>
   {:else if !current}
     <div class="mt-16 text-center">
-      <p class="text-xl font-semibold">You've completed today's trivia!</p>
+      <p class="text-xl font-semibold">You've played every card here!</p>
       <p class="mt-2 text-gray-500">Swipe right to review a past question.</p>
     </div>
   {:else}
     <div class="text-xs text-gray-400">
-      {index + 1} / {items.length} · {current.item.category}
+      {index + 1} / {items.length} · {current.deck?.name ?? current.item.category}
     </div>
 
     <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">

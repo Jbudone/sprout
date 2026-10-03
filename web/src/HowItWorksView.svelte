@@ -21,7 +21,7 @@ const flows: Flow[] = [
       {
         title: 'Request',
         who: 'You, in Studio',
-        note: 'Pick the week number, how many items, and optionally a topic or tier.',
+        note: 'Pick the week number (math file names), how many items, and optionally a topic or tier.',
         kind: 'you',
       },
       {
@@ -45,7 +45,7 @@ const flows: Flow[] = [
       {
         title: 'Save',
         who: 'Workflow step',
-        note: 'Passing items are written to content/. Items that fail 3 times are dropped.',
+        note: 'Trivia cards are added to the deck for their category (content.db); math goes to content/math. Items that fail 3 times are dropped.',
         kind: 'auto',
       },
       {
@@ -72,19 +72,19 @@ const flows: Flow[] = [
       {
         title: 'Quiz API',
         who: 'src/mastra/quiz/routes.ts',
-        note: 'Serves items from content/ and skips ones you have already done.',
+        note: 'Serves trivia from decks (content.db) and math from content/math, with your progress attached.',
         kind: 'auto',
       },
       {
         title: 'You answer',
         who: 'You, in this app',
-        note: 'Answer, skip, or flag an item as too easy, too hard, not fun, or a standout.',
+        note: 'Pick all decks (shuffled) or one domain or deck, then answer, skip, or flag a card as too easy, too hard, not fun, or a standout.',
         kind: 'you',
       },
       {
         title: 'Progress saved',
         who: 'quiz.db',
-        note: 'Holds your answers and feedback. "Reset progress" clears it.',
+        note: 'Holds your answers and feedback, separate from the cards. "Reset progress" clears it and never touches content.',
         kind: 'auto',
       },
       {
@@ -225,7 +225,7 @@ const glossary: [string, string][] = [
   <section class="space-y-2" aria-labelledby="big-picture">
     <h2 id="big-picture" class="font-medium">The big picture</h2>
     <p class="text-sm text-gray-600 dark:text-gray-300">
-      Studio workflows make content → <code>content/</code> files → this app serves them →
+      Studio workflows make cards → decks in <code>content.db</code> → this app serves them →
       your answers go to <code>quiz.db</code> → (later) ratings steer what gets made next.
     </p>
   </section>
