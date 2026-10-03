@@ -1,0 +1,27 @@
+{
+  "id": "mathematician-ramanujan",
+  "category": "mathematicians",
+  "eloRating": 1350,
+  "question": [
+    {
+      "text": "Which largely self-taught mathematician corresponded with G.H. Hardy and made profound contributions to number theory?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Srinivasa Ramanujan",
+  "acceptableAlternatives": [
+    "Ramanujan"
+  ],
+  "distractors": [
+    "P.C. Mahalanobis",
+    "S. Chandrasekhar",
+    "Satyendra Nath Bose"
+  ],
+  "hints": [
+    "His prolific, original work was often developed in isolation and documented in notebooks.",
+    "He is known for his remarkable intuition, particularly in the realm of infinite series, continued fractions, and partition theory.",
+    "A famous anecdote involves G.H. Hardy recognizing the genius in a taxicab number (1729) associated with him."
+  ],
+  "explanation": "Srinivasa Ramanujan was an Indian mathematician who, despite having almost no formal training in pure mathematics, made extraordinary contributions to mathematical analysis, number theory, infinite series, and continued fractions. His collaboration with the English mathematician G.H. Hardy at Cambridge University was crucial in recognizing and disseminating his unique genius to the wider mathematical community.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Srinivasa_Ramanujan"
+}

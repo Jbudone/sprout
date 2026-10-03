@@ -1,0 +1,27 @@
+{
+  "id": "geography-sahara-desert",
+  "category": "geography",
+  "eloRating": 1200,
+  "question": [
+    {
+      "text": "Which desert is the largest hot desert in the world, covering a significant portion of North Africa?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Sahara Desert",
+  "acceptableAlternatives": [
+    "Sahara"
+  ],
+  "distractors": [
+    "Gobi Desert",
+    "Arabian Desert",
+    "Kalahari Desert"
+  ],
+  "hints": [
+    "This desert spans across much of the northern part of Africa.",
+    "It is renowned for its immense sand dunes and extremely hot climate.",
+    "Its name comes from an Arabic word that literally means 'desert'."
+  ],
+  "explanation": "The Sahara Desert is the largest hot desert globally, stretching over 9.2 million square kilometers (3.6 million square miles) across eleven countries in North Africa. Its vastness and extreme environment make it one of Earth's most iconic natural landscapes.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Sahara"
+}

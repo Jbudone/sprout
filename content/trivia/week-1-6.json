@@ -1,0 +1,25 @@
+{
+  "id": "gemology-hardness-001",
+  "category": "gemology",
+  "eloRating": 1500,
+  "question": [
+    {
+      "text": "Which gemstone is the hardest known natural mineral?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Diamond",
+  "acceptableAlternatives": [],
+  "distractors": [
+    "Sapphire",
+    "Ruby",
+    "Emerald"
+  ],
+  "hints": [
+    "Consider the Mohs scale of mineral hardness.",
+    "This gem is a crystalline form of carbon.",
+    "It is renowned for its brilliance and often used in engagement rings."
+  ],
+  "explanation": "Diamonds are the hardest natural substance on Earth, scoring a perfect 10 on the Mohs scale of mineral hardness. Their exceptional hardness is due to their strong covalent bonds between carbon atoms, making them incredibly resistant to scratching and ideal for both jewelry and industrial applications.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Diamond"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "hist-math-003",
+  "category": "history-of-math",
+  "eloRating": 1500,
+  "question": [
+    {
+      "text": "Which mathematician introduced the first systematic notation for decimal fractions in print?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Simon Stevin",
+  "acceptableAlternatives": [
+    "Stevin"
+  ],
+  "distractors": [
+    "John Napier",
+    "Regiomontanus",
+    "John Wallis"
+  ],
+  "hints": [
+    "Consider mathematicians active in the late 16th century.",
+    "His work 'De Thiende' (The Art of Tens) was pivotal in popularizing decimal fractions.",
+    "He was a Flemish mathematician and engineer."
+  ],
+  "explanation": "Simon Stevin, in his 1585 treatise 'De Thiende' (The Art of Tens), advocated for the systematic use of decimal fractions and introduced a unique notation for them, paving the way for the modern decimal point. While others had used similar ideas before, Stevin's work was highly influential in standardizing and popularizing the concept.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Simon_Stevin"
+}

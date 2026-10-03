@@ -1,0 +1,25 @@
+{
+  "id": "chem-electronegativity-fluorine-347",
+  "category": "chemistry",
+  "eloRating": 1200,
+  "question": [
+    {
+      "text": "Which element has the highest electronegativity?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Fluorine",
+  "acceptableAlternatives": [],
+  "distractors": [
+    "Oxygen",
+    "Chlorine",
+    "Nitrogen"
+  ],
+  "hints": [
+    "Consider the general trend of electronegativity across the periodic table.",
+    "Electronegativity generally increases as you move across a period and up a group.",
+    "The element is found in Group 17 (halogens) and Period 2."
+  ],
+  "explanation": "Fluorine is the most electronegative element, meaning it has the strongest tendency to attract electrons in a chemical bond. This property makes it highly reactive and explains its strong oxidizing power.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Electronegativity"
+}

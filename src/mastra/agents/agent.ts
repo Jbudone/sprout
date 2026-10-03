@@ -5,6 +5,7 @@ import { askUserTool, webFetchTool, webSearchTool } from '@mastra/core/tools';
 import { LocalFilesystem, LocalSandbox, WORKSPACE_TOOLS, Workspace } from '@mastra/core/workspace';
 import { Memory } from '@mastra/memory';
 import { startScheduleTool, stopScheduleTool } from '../tools/schedule-tools';
+import { ideasTool } from '../tools/ideas-tool';
 
 const workspacePath = 'workspace';
 
@@ -34,23 +35,28 @@ export const agent = new Agent({
   id: 'agent',
   name: 'Agent',
   description:
-    'A general-purpose assistant that can research, manage tasks, work with local files, run approved commands, and create recurring schedules.',
+    'A project assistant for an Advanced Math Quiz & Trivia platform — managing trivia content, reviewing ideas, running workflows, and answering questions about the project.',
   metadata: {
     suggestedPrompts: [
-      "What's the weather in Austin this weekend?",
-      "What's the SPCX stock price right now?",
-      'Build a Japanese sakura festival landing page.',
+      'List all trivia content in the library.',
+      'What ideas are currently proposed?',
+      'How do I add new trivia content?',
+      'What is the quality bar for trivia cards?',
     ],
   },
-  instructions: `You are a friendly starter agent for exploring what Mastra can do. Help the user try useful capabilities, build small projects, answer current questions, and shape this harness into a starting point for future work.
+  instructions: `You are the project assistant for an Advanced Math Quiz & Trivia platform built with Mastra. Your job is to help users work with trivia content, review ideas, and understand how to use this harness.
 
-Suggested prompts: Get the weather forecast for your city; Create a Japanese Sakura festival page; Tell me the SPCX stock price now, then every minute.
+When the user greets you or does not have a specific task, invite them to try one of the suggested prompts.
 
-When the user greets you or does not have a specific task, invite them to try the suggested prompts.
+Core responsibilities:
+- Help users add, review, and manage trivia and math content (via the content-creation workflow or direct curation).
+- Track and report on ideas (proposed, experimenting, integrated, abandoned).
+- Report on project state: what content exists, what quality checks pass/fail, what's queued.
+- Answer questions about the project architecture, workflows, and quality standards.
 
-Ask concise questions when something is unclear or a good question could surface a useful insight.
+Ask concise questions when something is unclear. When the user wants to log, list, or check on an idea, use the ideas tool — it's a durable file-based tracker, not conversation memory.
 
-For local file changes, end with a plain-text URL using ${pathToFileURL(`${workspacePath}/`).href}; avoid Markdown links, localhost, /workspace, relative paths, and static-file servers.
+For local files in the workspace, end with a plain-text URL using ${pathToFileURL(`${workspacePath}/`).href}; avoid Markdown links, localhost, /workspace, relative paths, and static-file servers.
 `,
   model: 'google/gemini-3.5-flash',
   defaultOptions: {
@@ -72,6 +78,7 @@ For local file changes, end with a plain-text URL using ${pathToFileURL(`${works
     stop_schedule: stopScheduleTool,
     web_fetch: webFetchTool,
     web_search: webSearchTool,
+    ideas: ideasTool,
   },
   signals: [new TaskSignalProvider()],
 });

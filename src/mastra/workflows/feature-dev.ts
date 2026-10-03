@@ -80,7 +80,7 @@ const createSandboxStep = createStep({
   outputSchema: BuildCycleSchema,
   execute: async ({ inputData, requestContext }) => {
     const result = await callWorktreeTool(
-      { action: 'create', featureId: inputData.featureId, baseRef: 'HEAD' },
+      { action: 'create', featureId: inputData.featureId, branchPrefix: 'exp', baseRef: 'HEAD' },
       requestContext,
     );
     if (!result.success) throw new Error(`Sandbox creation failed: ${result.message}`);
@@ -138,7 +138,7 @@ const reviewStep = createStep({
   outputSchema: BuildCycleSchema,
   execute: async ({ inputData, mastra, requestContext }) => {
     const diffResult = await callWorktreeTool(
-      { action: 'diff', featureId: inputData.featureId, baseRef: 'HEAD', baseSha: inputData.baseSha },
+      { action: 'diff', featureId: inputData.featureId, branchPrefix: 'exp', baseRef: 'HEAD', baseSha: inputData.baseSha },
       requestContext,
     );
     if (!diffResult.success) throw new Error(`Failed to compute sandbox diff: ${diffResult.message}`);
@@ -221,14 +221,20 @@ const mergeOrRejectStep = createStep({
       };
     }
 
+    const commitResult = await callWorktreeTool(
+      { action: 'commit', featureId: inputData.featureId, branchPrefix: 'exp', baseRef: 'HEAD' },
+      requestContext,
+    );
+    if (!commitResult.success) throw new Error(`Failed to commit sandbox changes: ${commitResult.message}`);
+
     const mergeResult = await callWorktreeTool(
-      { action: 'merge', featureId: inputData.featureId, baseRef: 'HEAD' },
+      { action: 'merge', featureId: inputData.featureId, branchPrefix: 'exp', baseRef: 'HEAD' },
       requestContext,
     );
     if (!mergeResult.success) throw new Error(`Merge failed: ${mergeResult.message}`);
 
     const removeResult = await callWorktreeTool(
-      { action: 'remove', featureId: inputData.featureId, baseRef: 'HEAD' },
+      { action: 'remove', featureId: inputData.featureId, branchPrefix: 'exp', baseRef: 'HEAD' },
       requestContext,
     );
     if (!removeResult.success) {

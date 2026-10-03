@@ -1,0 +1,26 @@
+{
+  "id": "linear-algebra-advanced-week23-001",
+  "weekNumber": 23,
+  "tier": "advanced",
+  "domain": "linear-algebra",
+  "promptLatex": "Let $V$ be a finite-dimensional complex inner product space. Suppose $N: V \\to V$ is a normal operator such that $N^2 = N$. Prove that $N$ is an orthogonal projection.",
+  "finalAnswer": "The proof demonstrates that $N$ is self-adjoint ($N^*=N$) and idempotent ($N^2=N$), which are the defining properties of an orthogonal projection.",
+  "hints": [
+    "Recall the Spectral Theorem for normal operators on a finite-dimensional complex inner product space. What does it say about the diagonalizability of $N$?",
+    "If $N$ is normal, it is unitarily diagonalizable. Consider its eigenvalues. What must the eigenvalues be if $N^2 = N$?",
+    "An operator $P$ is an orthogonal projection if and only if $P^2=P$ (idempotent) and $P^*=P$ (self-adjoint). You are given $N^2=N$. How can you show $N^*=N$ using the properties of its eigenvalues and eigenvectors?"
+  ],
+  "stepByStepSolutionLatex": [
+    "Since $N$ is a normal operator on a finite-dimensional complex inner product space $V$, by the Spectral Theorem, $N$ is unitarily diagonalizable. This means there exists an orthonormal basis of eigenvectors \\{v_1, v_2, \\ldots, v_n\\} for $V$ such that $N v_i = \\lambda_i v_i$ for all $i=1, \\ldots, n$, where $\\lambda_i$ are the eigenvalues of $N$.",
+    "We are given that $N^2 = N$. Applying this condition to an eigenvector $v_i$: $N^2 v_i = N (N v_i) = N (\\lambda_i v_i) = \\lambda_i (N v_i) = \\lambda_i (\\lambda_i v_i) = \\lambda_i^2 v_i$.",
+    "Since $N^2 v_i = N v_i$, we have $\\lambda_i^2 v_i = \\lambda_i v_i$. Since $v_i \\neq 0$, we can divide by $v_i$ to get $\\lambda_i^2 = \\lambda_i$.",
+    "The equation $\\lambda_i^2 = \\lambda_i$ implies $\\lambda_i^2 - \\lambda_i = 0$, so $\\lambda_i (\\lambda_i - 1) = 0$. Thus, the only possible eigenvalues for $N$ are $\\lambda_i = 0$ or $\\lambda_i = 1$.",
+    "An orthogonal projection $P$ is defined by two properties: it is idempotent ($P^2 = P$) and it is self-adjoint ($P^* = P$). We are already given $N^2 = N$, so $N$ is idempotent. We now need to show that $N$ is self-adjoint, i.e., $N^* = N$.",
+    "For a normal operator $N$ with eigenvalues $\\lambda_i$ and corresponding orthonormal eigenvectors $v_i$, its adjoint $N^*$ has eigenvalues $\\overline{\\lambda_i}$ with the same corresponding orthonormal eigenvectors $v_i$. That is, $N^* v_i = \\overline{\\lambda_i} v_i$.",
+    "Since the eigenvalues of $N$ are either $0$ or $1$, they are all real numbers. Therefore, for each $\\lambda_i$, we have $\\overline{\\lambda_i} = \\lambda_i$.",
+    "This implies $N^* v_i = \\overline{\\lambda_i} v_i = \\lambda_i v_i = N v_i$ for all $i=1, \\ldots, n$.",
+    "Since \\{v_1, \\ldots, v_n\\} forms an orthonormal basis for $V$, and $N^*$ and $N$ act identically on all basis vectors, $N^*$ and $N$ must be the same operator. Therefore, $N^* = N$.",
+    "Since $N$ satisfies both $N^2 = N$ and $N^* = N$, it is an orthogonal projection."
+  ],
+  "sanityVerificationNotes": "The problem asks to prove a property of a normal operator satisfying $N^2=N$. The solution correctly uses the Spectral Theorem for normal operators to establish the nature of its eigenvalues. The core idea is that if the eigenvalues are 0 or 1, then they are real, which implies $N$ is self-adjoint (since $N^*$ has conjugate eigenvalues). Combined with $N^2=N$, this proves $N$ is an orthogonal projection. This is a standard result in advanced linear algebra and requires understanding of normal operators, spectral theorem, inner product spaces, and properties of projections. The steps are logical and well-justified. The level seems appropriate for 'advanced'."
+}

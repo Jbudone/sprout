@@ -1,0 +1,25 @@
+{
+  "id": "funfact-jiffy-001",
+  "category": "fun-facts",
+  "eloRating": 1300,
+  "question": [
+    {
+      "text": "What common informal term for 'a very short time' is also a precisely defined unit in some technical fields?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Jiffy",
+  "acceptableAlternatives": [],
+  "distractors": [
+    "Moment",
+    "Instant",
+    "Blink"
+  ],
+  "hints": [
+    "It's often used when describing something that happens extremely quickly.",
+    "The word for this unit starts with the letter 'J'.",
+    "In computing, it sometimes refers to the duration of one clock tick."
+  ],
+  "explanation": "While 'jiffy' is widely used informally to mean a very short duration, it has been given precise definitions in various scientific and technical contexts. In computing, a 'jiffy' is often the period of one clock tick of the system timer, typically 1/100th or 1/60th of a second. In physics, specifically in quantum electrodynamics, a 'light jiffy' is the time it takes for light to travel one fermi ($10^{-15}$ meters), which is approximately $3 \\times 10^{-24}$ seconds.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Jiffy_(time)"
+}

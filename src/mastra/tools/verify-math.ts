@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { MathProblemSchema } from '../schemas/quiz';
 
 const ESCAPED_DOLLAR = /\\\$/g;
-const NON_DETERMINISTIC_PATTERN = /\b(approximately|about|around|roughly|depends|varies|either|possibly|maybe)\b/i;
+export const NON_DETERMINISTIC_PATTERN =
+  /\b(approximately|about|around|roughly|depends|varies|either|possibly|maybe)\b/i;
 
 function checkDelimiterBalance(latex: string): string[] {
   const issues: string[] = [];

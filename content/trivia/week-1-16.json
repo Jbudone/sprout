@@ -1,0 +1,28 @@
+{
+  "id": "tech-www-inventor-321",
+  "category": "technology",
+  "eloRating": 1550,
+  "question": [
+    {
+      "text": "Who is widely credited with inventing the World Wide Web?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Tim Berners-Lee",
+  "acceptableAlternatives": [
+    "Sir Tim Berners-Lee",
+    "Berners-Lee"
+  ],
+  "distractors": [
+    "Vinton Cerf",
+    "Bill Gates",
+    "Steve Wozniak"
+  ],
+  "hints": [
+    "Consider who developed the fundamental protocols for information sharing over the internet.",
+    "This individual proposed a global hypertext project while working at CERN.",
+    "He developed HTML, HTTP, and URLs, the core components of the Web."
+  ],
+  "explanation": "Sir Tim Berners-Lee, a British computer scientist, invented the World Wide Web in 1989 while working at CERN. He created the first web browser, web server, and the initial specifications for HTML, HTTP, and URLs, laying the groundwork for the modern internet.",
+  "learnMoreArticle": "https://www.w3.org/People/Berners-Lee/"
+}

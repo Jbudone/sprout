@@ -1,0 +1,27 @@
+{
+  "id": "mathematician-emmy-noether",
+  "category": "mathematicians",
+  "eloRating": 1350,
+  "question": [
+    {
+      "text": "Which German mathematician, known for her groundbreaking work in abstract algebra and theoretical physics, developed a fundamental theorem that links symmetries and conservation laws?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Emmy Noether",
+  "acceptableAlternatives": [
+    "Amalie Emmy Noether"
+  ],
+  "distractors": [
+    "Sophie Germain",
+    "Ada Lovelace",
+    "Maria Gaetana Agnesi"
+  ],
+  "hints": [
+    "Consider mathematicians who made significant contributions to the foundations of modern algebra.",
+    "This mathematician's work established fundamental links between symmetry and conserved quantities in physics.",
+    "Her surname is associated with a theorem crucial in theoretical physics, named after her."
+  ],
+  "explanation": "Amalie Emmy Noether was a German mathematician renowned for her revolutionary contributions to abstract algebra and theoretical physics. Her theorem, published in 1918, is a cornerstone of modern physics, stating that every differentiable symmetry of the action of a physical system has a corresponding conservation law.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Emmy_Noether"
+}

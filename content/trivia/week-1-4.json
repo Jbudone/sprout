@@ -1,0 +1,29 @@
+{
+  "id": "botany-stomata-function-101",
+  "category": "botany",
+  "eloRating": 950,
+  "question": [
+    {
+      "text": "What is the primary function of stomata in plants?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Gas exchange",
+  "acceptableAlternatives": [
+    "Regulating gas exchange",
+    "Controlling gas exchange",
+    "Facilitating gas exchange"
+  ],
+  "distractors": [
+    "Nutrient absorption",
+    "Water storage",
+    "Sugar production"
+  ],
+  "hints": [
+    "Consider where stomata are typically found on a plant and what substances need to move into or out of these areas.",
+    "Think about the essential raw materials a plant needs from the air for photosynthesis.",
+    "Their primary role involves the movement of carbon dioxide, oxygen, and water vapor."
+  ],
+  "explanation": "Stomata are small pores, primarily on the undersides of leaves, that regulate the exchange of gases between the plant and the atmosphere. This includes taking in carbon dioxide for photosynthesis and releasing oxygen and water vapor (transpiration).",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Stoma"
+}

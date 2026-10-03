@@ -1,0 +1,27 @@
+{
+  "id": "applied-math-lp-definition-1",
+  "category": "applied-math",
+  "eloRating": 1500,
+  "question": [
+    {
+      "text": "What mathematical technique optimizes a linear objective function, subject to linear constraints?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Linear Programming",
+  "acceptableAlternatives": [
+    "Linear Program"
+  ],
+  "distractors": [
+    "Quadratic Programming",
+    "Dynamic Programming",
+    "Nonlinear Programming"
+  ],
+  "hints": [
+    "This technique falls under the broader field of mathematical optimization.",
+    "The name explicitly references the nature of the functions involved: they are straight lines or planes.",
+    "The 'programming' in its name refers to planning or scheduling, not computer code."
+  ],
+  "explanation": "Linear programming is a powerful mathematical method used to achieve the best outcome (such as maximum profit or lowest cost) in a mathematical model whose requirements are represented by linear relationships. It's widely applied in business, economics, engineering, and military planning.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Linear_programming"
+}

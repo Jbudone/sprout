@@ -1,0 +1,27 @@
+{
+  "id": "famous-theorems-euler-identity-001",
+  "category": "famous-theorems",
+  "eloRating": 1500,
+  "question": [
+    {
+      "text": "$e^{i\\pi} + 1 = 0$",
+      "style": "formula"
+    }
+  ],
+  "correctAnswer": "Euler's Identity",
+  "acceptableAlternatives": [
+    "Euler's equation"
+  ],
+  "distractors": [
+    "De Moivre's Formula",
+    "Cauchy-Riemann Equations",
+    "Fundamental Theorem of Algebra"
+  ],
+  "hints": [
+    "This identity connects five fundamental mathematical constants.",
+    "It involves the base of the natural logarithm, the imaginary unit, and the ratio of a circle's circumference to its diameter.",
+    "It is named after a prolific Swiss mathematician."
+  ],
+  "explanation": "Euler's Identity is renowned for its mathematical beauty, linking five fundamental constants: $e$ (Euler's number), $i$ (the imaginary unit), $\\pi$ (pi), $1$, and $0$. It is a special case of Euler's formula, $e^{ix} = \\cos x + i \\sin x$, when $x = \\pi$.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Euler%27s_identity"
+}

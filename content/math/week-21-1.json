@@ -1,0 +1,37 @@
+{
+  "id": "M21001",
+  "weekNumber": 21,
+  "tier": "intermediate",
+  "domain": "algebra",
+  "promptLatex": "An arithmetic progression has its 5th term equal to 20 and its 10th term equal to 40. Find the sum of the first 20 terms.",
+  "finalAnswer": "840",
+  "hints": [
+    "Recall the general formulas for the $n$-th term and the sum of the first $n$ terms of an arithmetic progression.",
+    "Use the given information about the 5th and 10th terms to set up a system of two linear equations in terms of the first term ($a$) and the common difference ($d$).",
+    "Solve the system for $a$ and $d$, then substitute these values into the formula for the sum of the first 20 terms: $S_n = \\frac{n}{2}(2a + (n-1)d)$."
+  ],
+  "stepByStepSolutionLatex": [
+    "Let the first term of the arithmetic progression be $a$ and the common difference be $d$.",
+    "The formula for the $n$-th term of an arithmetic progression is $a_n = a + (n-1)d$.",
+    "From the given information, we have:",
+    "$a_5 = a + (5-1)d = a + 4d = 20 \\quad (1)$",
+    "$a_{10} = a + (10-1)d = a + 9d = 40 \\quad (2)$",
+    "Subtract equation (1) from equation (2) to eliminate $a$ and solve for $d$:",
+    "$(a + 9d) - (a + 4d) = 40 - 20$",
+    "$5d = 20$",
+    "$d = 4$",
+    "Now substitute the value of $d=4$ into equation (1) to find $a$:",
+    "$a + 4(4) = 20$",
+    "$a + 16 = 20$",
+    "$a = 4$",
+    "So, the first term is $a=4$ and the common difference is $d=4$.",
+    "The formula for the sum of the first $n$ terms of an arithmetic progression is $S_n = \\frac{n}{2}(2a + (n-1)d)$.",
+    "We need to find the sum of the first 20 terms, so $n=20$:",
+    "$S_{20} = \\frac{20}{2}(2(4) + (20-1)4)$",
+    "$S_{20} = 10(8 + (19)4)$",
+    "$S_{20} = 10(8 + 76)$",
+    "$S_{20} = 10(84)$",
+    "$S_{20} = 840$"
+  ],
+  "sanityVerificationNotes": "The first term is 4 and the common difference is 4. The terms are 4, 8, 12, 16, 20... Indeed, the 5th term is 20. The 10th term would be 4 + 9*4 = 40. The calculations for a and d are correct. The sum formula was applied correctly, $S_{20} = 10(2*4 + 19*4) = 10(8+76) = 10*84 = 840$. All steps are consistent and the final answer is confirmed."
+}

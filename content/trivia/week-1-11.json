@@ -1,0 +1,29 @@
+{
+  "id": "math-culture-golden-ratio-001",
+  "category": "math-in-culture",
+  "eloRating": 1200,
+  "question": [
+    {
+      "text": "Which mathematical constant, approximately 1.618, is widely observed in natural patterns, artistic compositions, and architectural designs for its perceived aesthetic balance?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Golden Ratio",
+  "acceptableAlternatives": [
+    "Divine Proportion",
+    "Golden Mean",
+    "Phi"
+  ],
+  "distractors": [
+    "Pi",
+    "Euler's Number",
+    "Silver Ratio"
+  ],
+  "hints": [
+    "Consider famous ratios associated with aesthetic appeal.",
+    "It is often symbolized by the Greek letter phi ($\\phi$).",
+    "The Fibonacci sequence is closely related to this constant; the ratio of consecutive Fibonacci numbers approaches it."
+  ],
+  "explanation": "The Golden Ratio, often represented by the Greek letter phi ($\\phi$), is an irrational number approximately equal to 1.618. It is found throughout nature, from the spiral arrangement of leaves and seeds to the branching of trees, and has been intentionally used by artists and architects for centuries due to its perceived aesthetic appeal and harmonious proportions.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Golden_ratio"
+}

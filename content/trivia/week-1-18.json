@@ -1,0 +1,28 @@
+{
+  "id": "history-first-roman-emperor-001",
+  "category": "history",
+  "eloRating": 1000,
+  "question": [
+    {
+      "text": "Who was the first Roman emperor?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Augustus",
+  "acceptableAlternatives": [
+    "Octavian",
+    "Gaius Octavius"
+  ],
+  "distractors": [
+    "Julius Caesar",
+    "Nero",
+    "Constantine the Great"
+  ],
+  "hints": [
+    "Consider the leader who emerged after the Roman Republic's civil wars.",
+    "He was the adopted son and heir of Julius Caesar.",
+    "His victory over Mark Antony and Cleopatra at the Battle of Actium solidified his power."
+  ],
+  "explanation": "Augustus, born Gaius Octavius, became the first Roman emperor in 27 BC. His reign, lasting over 40 years, ushered in the Pax Romana, a long period of peace and prosperity for the Roman Empire, and he significantly expanded the empire's territory and infrastructure.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Augustus"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "biology-largest-organ-001",
+  "category": "biology",
+  "eloRating": 750,
+  "question": [
+    {
+      "text": "What is the largest organ of the human body?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Skin",
+  "acceptableAlternatives": [
+    "The skin"
+  ],
+  "distractors": [
+    "Liver",
+    "Brain",
+    "Lungs"
+  ],
+  "hints": [
+    "Consider organs by surface area, not just volume or weight.",
+    "It's an external organ that covers the entire body.",
+    "It forms the primary protective barrier against the environment."
+  ],
+  "explanation": "The skin is the body's largest organ, covering an average surface area of about 1.5 to 2 square meters (16.1 to 21.5 square feet) and accounting for about 15% of total body weight. It protects against pathogens, regulates temperature, and allows for touch sensation.",
+  "learnMoreArticle": "https://www.britannica.com/science/skin"
+}

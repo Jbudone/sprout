@@ -3,6 +3,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { getRepoRoot } from '../utils/repo-root';
 
 const execFileAsync = promisify(execFile);
 
@@ -10,25 +11,25 @@ const execFileAsync = promisify(execFile);
 // (no shell is used, but this also blocks path traversal like `../../etc`).
 const FEATURE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
 
-async function getRepoRoot(): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel']);
-  return stdout.trim();
-}
-
 export const worktreeTool = createTool({
   id: 'worktree-tool',
   description:
-    'Creates, diffs, merges, or removes an isolated git worktree sandbox for a feature experiment, so prototyping never touches the primary working tree.',
+    'Creates, diffs, commits, merges, or removes an isolated git worktree sandbox (for a feature build or an idea experiment), so prototyping never touches the primary working tree.',
   inputSchema: z.object({
-    action: z.enum(['create', 'diff', 'merge', 'remove']),
+    action: z.enum(['create', 'diff', 'commit', 'merge', 'remove']),
     featureId: z
       .string()
       .regex(FEATURE_ID_PATTERN, 'featureId must be alphanumeric, optionally with "-" or "_", up to 64 chars'),
+    branchPrefix: z
+      .string()
+      .regex(/^[a-zA-Z0-9-]{1,32}$/)
+      .default('exp')
+      .describe('Branch namespace, e.g. "exp" for feature-dev or "idea" for idea-experiment. Must match across all actions for the same sandbox.'),
     baseRef: z.string().default('HEAD').describe('Ref to branch the sandbox from. Only used for "create".'),
     baseSha: z.string().optional().describe('Commit the sandbox branched from. Required for "diff".'),
   }),
   outputSchema: z.object({
-    action: z.enum(['create', 'diff', 'merge', 'remove']),
+    action: z.enum(['create', 'diff', 'commit', 'merge', 'remove']),
     featureId: z.string(),
     branch: z.string(),
     worktreePath: z.string(),
@@ -39,8 +40,8 @@ export const worktreeTool = createTool({
     diff: z.string().optional(),
     hasChanges: z.boolean().optional(),
   }),
-  execute: async ({ action, featureId, baseRef, baseSha }) => {
-    const branch = `exp/${featureId}`;
+  execute: async ({ action, featureId, branchPrefix, baseRef, baseSha }) => {
+    const branch = `${branchPrefix}/${featureId}`;
     const repoRoot = await getRepoRoot();
     const worktreePath = path.resolve(repoRoot, '..', 'sandboxes', featureId);
 
@@ -65,7 +66,11 @@ export const worktreeTool = createTool({
 
       if (action === 'diff') {
         if (!baseSha) throw new Error('baseSha is required for the "diff" action.');
-        const { stdout } = await execFileAsync('git', ['diff', baseSha], { cwd: worktreePath });
+        // Stage first so new (untracked) files show up too: a plain `git diff`
+        // only covers tracked files, which would silently hide anything the
+        // builder created rather than edited.
+        await execFileAsync('git', ['add', '-A'], { cwd: worktreePath });
+        const { stdout } = await execFileAsync('git', ['diff', '--cached', baseSha], { cwd: worktreePath });
         return {
           action,
           featureId,
@@ -78,11 +83,38 @@ export const worktreeTool = createTool({
         };
       }
 
+      if (action === 'commit') {
+        const { stdout: statusOut } = await execFileAsync('git', ['status', '--porcelain'], { cwd: worktreePath });
+        if (statusOut.trim().length === 0) {
+          return {
+            action,
+            featureId,
+            branch,
+            worktreePath,
+            success: true,
+            message: 'Nothing to commit; worktree already matches its last commit.',
+          };
+        }
+        await execFileAsync('git', ['add', '-A'], { cwd: worktreePath });
+        await execFileAsync('git', ['commit', '-m', `${branchPrefix}: ${featureId}`], {
+          cwd: worktreePath,
+        });
+        return {
+          action,
+          featureId,
+          branch,
+          worktreePath,
+          success: true,
+          message: `Committed pending changes on ${branch}.`,
+        };
+      }
+
       if (action === 'merge') {
         // Merges into whatever branch is currently checked out in repoRoot.
         // This tool assumes a single-actor workflow where the primary branch
-        // hasn't moved since the sandbox was created.
-        await execFileAsync('git', ['merge', '--no-ff', branch, '-m', `Merge ${branch} via feature-dev workflow`], {
+        // hasn't moved since the sandbox was created. Requires the sandbox's
+        // changes to already be committed on `branch` (see the "commit" action).
+        await execFileAsync('git', ['merge', '--no-ff', branch, '-m', `Merge ${branch}`], {
           cwd: repoRoot,
         });
         return {

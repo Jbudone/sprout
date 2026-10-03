@@ -1,0 +1,27 @@
+{
+  "id": "science-light-refraction-001",
+  "category": "science",
+  "eloRating": 950,
+  "question": [
+    {
+      "text": "What phenomenon occurs when light changes direction as it passes from one medium to another?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Refraction",
+  "acceptableAlternatives": [
+    "Refraction of light"
+  ],
+  "distractors": [
+    "Reflection",
+    "Diffraction",
+    "Dispersion"
+  ],
+  "hints": [
+    "This phenomenon explains why objects underwater appear to be in a different position than they actually are.",
+    "It's the principle behind how lenses in glasses or telescopes work to focus light.",
+    "Think about what happens to the speed of light when it enters a new material."
+  ],
+  "explanation": "Refraction is the bending of light (or other waves) as it passes from one transparent medium to another. This change in direction is due to the light changing its speed as it moves into a material with a different optical density. It is responsible for many optical illusions, like a 'bent' straw in a glass of water.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Refraction"
+}

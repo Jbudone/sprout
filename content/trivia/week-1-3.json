@@ -1,0 +1,27 @@
+{
+  "id": "animals-high-bp-001",
+  "category": "animals",
+  "eloRating": 1200,
+  "question": [
+    {
+      "text": "Which land animal is known for having the highest blood pressure?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Giraffe",
+  "acceptableAlternatives": [
+    "The Giraffe"
+  ],
+  "distractors": [
+    "Elephant",
+    "Lion",
+    "Rhinoceros"
+  ],
+  "hints": [
+    "Consider animals that need to pump blood a significant vertical distance against gravity.",
+    "Think about an animal with an exceptionally long neck.",
+    "This tall African mammal's unique physiology is adapted for its height."
+  ],
+  "explanation": "Giraffes have exceptionally high blood pressure, roughly double that of humans, to effectively pump blood up their long necks to their brains. They also possess special valves and elastic blood vessels to manage blood flow and prevent excess pressure when they lower their heads to drink.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Giraffe"
+}

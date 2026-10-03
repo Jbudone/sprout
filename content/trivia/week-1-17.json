@@ -1,0 +1,27 @@
+{
+  "id": "history-001",
+  "category": "history",
+  "eloRating": 1100,
+  "question": [
+    {
+      "text": "Who led the first expedition to circumnavigate the globe?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Ferdinand Magellan",
+  "acceptableAlternatives": [
+    "Magellan"
+  ],
+  "distractors": [
+    "Christopher Columbus",
+    "Vasco da Gama",
+    "James Cook"
+  ],
+  "hints": [
+    "This explorer was Portuguese but sailed under the Spanish flag.",
+    "His voyage, though he didn't complete it himself, definitively proved the Earth was spherical and much larger than previously thought.",
+    "He was killed in the Philippines during the expedition."
+  ],
+  "explanation": "Ferdinand Magellan's expedition, which began in 1519, was the first to sail around the world. Although Magellan himself died in the Philippines in 1521, his remaining crew completed the journey in 1522 under the command of Juan Sebastián Elcano.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Ferdinand_Magellan"
+}

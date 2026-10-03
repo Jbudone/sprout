@@ -1,0 +1,30 @@
+{
+  "id": "sum-of-series-n(n+1)",
+  "weekNumber": 20,
+  "tier": "intermediate",
+  "domain": "calculus",
+  "promptLatex": "Find the sum of the infinite series: $$\\sum_{n=1}^{\\infty} \\frac{1}{n(n+1)}$$",
+  "finalAnswer": "1",
+  "hints": [
+    "Begin by expressing the general term $\\frac{1}{n(n+1)}$ using partial fraction decomposition.",
+    "After decomposing, write out the first few terms of the partial sum $S_N = \\sum_{n=1}^{N} \\left(\\frac{1}{n} - \\frac{1}{n+1}\\right)$. Observe how terms cancel.",
+    "Identify that this is a telescoping series. Find a closed-form expression for the N-th partial sum, $S_N$, and then evaluate $\\lim_{N \\to \\infty} S_N$."
+  ],
+  "stepByStepSolutionLatex": [
+    "We need to find the sum of the series $\\sum_{n=1}^{\\infty} \\frac{1}{n(n+1)}$.",
+    "First, we decompose the general term using partial fractions: $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$.",
+    "Multiplying both sides by $n(n+1)$ gives $1 = A(n+1) + Bn$.",
+    "To find $A$, let $n=0$: $1 = A(0+1) + B(0) \\Rightarrow A=1$.",
+    "To find $B$, let $n=-1$: $1 = A(-1+1) + B(-1) \\Rightarrow 1 = -B \\Rightarrow B=-1$.",
+    "So, the general term can be written as $\\frac{1}{n} - \\frac{1}{n+1}$.",
+    "Now, we write out the N-th partial sum, $S_N = \\sum_{n=1}^{N} \\left(\\frac{1}{n} - \\frac{1}{n+1}\\right)$.",
+    "$S_N = \\left(1 - \\frac{1}{2}\\right) + \\left(\\frac{1}{2} - \\frac{1}{3}\\right) + \\left(\\frac{1}{3} - \\frac{1}{4}\\right) + \\dots + \\left(\\frac{1}{N} - \\frac{1}{N+1}\\right)$.",
+    "This is a telescoping series, where intermediate terms cancel out.",
+    "$S_N = 1 - \\frac{1}{N+1}$.",
+    "To find the sum of the infinite series, we take the limit of $S_N$ as $N \\to \\infty$.",
+    "$\\sum_{n=1}^{\\infty} \\frac{1}{n(n+1)} = \\lim_{N \\to \\infty} S_N = \\lim_{N \\to \\infty} \\left(1 - \\frac{1}{N+1}\\right)$.",
+    "As $N \\to \\infty$, $\\frac{1}{N+1} \\to 0$.",
+    "Therefore, the sum of the series is $1 - 0 = 1$."
+  ],
+  "sanityVerificationNotes": "The problem is a standard telescoping series problem, common in introductory calculus courses on infinite series. The partial fraction decomposition is correct, leading to a clear telescoping sum. The limit evaluation is straightforward. The final answer is a single, exact value. Hints escalate appropriately."
+}

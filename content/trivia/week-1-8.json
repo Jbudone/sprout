@@ -1,0 +1,27 @@
+{
+  "id": "notation-integral-symbol-001",
+  "category": "notation-and-symbols",
+  "eloRating": 1350,
+  "question": [
+    {
+      "text": "$\\\\int$",
+      "style": "formula"
+    }
+  ],
+  "correctAnswer": "Integral",
+  "acceptableAlternatives": [
+    "Integration"
+  ],
+  "distractors": [
+    "Derivative",
+    "Summation",
+    "Limit"
+  ],
+  "hints": [
+    "This symbol is used to calculate the accumulation of quantities.",
+    "Think about the inverse operation of finding a tangent line's slope.",
+    "It's fundamentally linked to finding the area under a curve."
+  ],
+  "explanation": "The symbol $\\\\int$ is known as the integral sign and represents the operation of integration in calculus. It originated from an elongated 'S' for 'sum' (from Latin 'summa'), reflecting its use in summing infinitely many infinitesimally small quantities to find a total. This process is fundamental for calculating areas, volumes, and solving differential equations, and is the inverse of differentiation.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Integral"
+}

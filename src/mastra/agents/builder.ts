@@ -1,27 +1,17 @@
 import { Agent } from '@mastra/core/agent';
-import { LocalFilesystem, LocalSandbox, WORKSPACE_TOOLS, Workspace } from '@mastra/core/workspace';
+import { WORKSPACE_TOOLS } from '@mastra/core/workspace';
+import { createWorktreeWorkspace } from '../lib/worktree-workspace';
 
-// Scoped per-run via requestContext's `worktreePath`, so one agent instance
-// can safely implement many features in parallel, each inside its own git
-// worktree sandbox created by worktreeTool. Write/edit/delete don't require
-// approval here (unlike the general `agent`'s workspace): this runs headless
-// inside a workflow with no human watching mid-run, and the blast radius is
-// a disposable directory outside the primary repo. The human gate for this
-// pipeline happens later, before merge.
-export const builderWorkspace = new Workspace({
-  id: 'builder-workspace',
-  filesystem: ({ requestContext }) =>
-    new LocalFilesystem({ basePath: requestContext.get('worktreePath') as string }),
-  sandbox: ({ requestContext }) =>
-    new LocalSandbox({ workingDirectory: requestContext.get('worktreePath') as string }),
-  sandboxCacheKey: ({ requestContext }) => requestContext.get('worktreePath') as string,
-  tools: {
-    [WORKSPACE_TOOLS.FILESYSTEM.WRITE_FILE]: {
-      requireReadBeforeWrite: true,
-    },
-    [WORKSPACE_TOOLS.FILESYSTEM.EDIT_FILE]: {
-      requireReadBeforeWrite: true,
-    },
+// Write/edit/delete don't require approval here (unlike the general `agent`'s
+// workspace): this runs headless inside a workflow with no human watching
+// mid-run, and the blast radius is a disposable directory outside the
+// primary repo. The human gate for this pipeline happens later, before merge.
+export const builderWorkspace = createWorktreeWorkspace('builder-workspace', {
+  [WORKSPACE_TOOLS.FILESYSTEM.WRITE_FILE]: {
+    requireReadBeforeWrite: true,
+  },
+  [WORKSPACE_TOOLS.FILESYSTEM.EDIT_FILE]: {
+    requireReadBeforeWrite: true,
   },
 });
 

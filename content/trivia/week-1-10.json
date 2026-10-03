@@ -1,0 +1,27 @@
+{
+  "id": "geo-fault-normal",
+  "category": "geology",
+  "eloRating": 1400,
+  "question": [
+    {
+      "text": "In geology, which type of fault occurs when the hanging wall moves downward relative to the footwall, commonly found in regions of crustal extension?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Normal fault",
+  "acceptableAlternatives": [
+    "Normal faulting"
+  ],
+  "distractors": [
+    "Reverse fault",
+    "Strike-slip fault",
+    "Thrust fault"
+  ],
+  "hints": [
+    "Consider the types of stress that can act on the Earth's crust: tensional, compressional, or shear.",
+    "Think about what happens to rock layers when the crust is being pulled apart or stretched.",
+    "The name of this fault reflects the 'normal' way gravity pulls rock blocks down in an extensional setting."
+  ],
+  "explanation": "Normal faults are a result of tensional stress in the Earth's crust, where rocks are being pulled apart. The hanging wall, which is the block of rock above the fault plane, slides down relative to the footwall. This process leads to the lengthening of the crust and is commonly observed in rift valleys and areas of continental rifting, such as the East African Rift.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Normal_fault"
+}

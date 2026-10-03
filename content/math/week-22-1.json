@@ -1,0 +1,31 @@
+{
+  "id": "NT-22-001",
+  "weekNumber": 22,
+  "tier": "intermediate",
+  "domain": "number-theory",
+  "promptLatex": "Find the last two digits of $7^{2023}$.",
+  "finalAnswer": "43",
+  "hints": [
+    "The 'last two digits' of a number $N$ can be found by evaluating $N$ modulo what number?",
+    "For modular exponentiation problems $a^b \\pmod m$, it's useful to find the order of $a$ modulo $m$, or use Euler's Totient Theorem or Carmichael function. What is $\\phi(100)$ or $\\lambda(100)$?",
+    "Calculate the first few powers of $7$ modulo $100$: $7^1, 7^2, 7^3, \\dots$ until you find a pattern or reach $1 \\pmod{100}$."
+  ],
+  "stepByStepSolutionLatex": [
+    "The problem asks for the last two digits of $7^{2023}$, which is equivalent to finding the value of $7^{2023} \\pmod{100}$.",
+    "We need to find the exponent modulo the order of $7$ modulo $100$. Let's compute the first few powers of $7$ modulo $100$:",
+    "$7^1 \\equiv 7 \\pmod{100}$",
+    "$7^2 \\equiv 49 \\pmod{100}$",
+    "$7^3 \\equiv 49 \\times 7 = 343 \\equiv 43 \\pmod{100}$",
+    "$7^4 \\equiv 43 \\times 7 = 301 \\equiv 1 \\pmod{100}$",
+    "We found that $7^4 \\equiv 1 \\pmod{100}$. This means the order of $7$ modulo $100$ is $4$.",
+    "Now we can reduce the exponent $2023$ modulo $4$.",
+    "$2023 \\div 4 = 505$ with a remainder of $3$. So, $2023 = 4 \\times 505 + 3$.",
+    "Therefore, $7^{2023} \\equiv 7^{4 \\times 505 + 3} \\pmod{100}$.",
+    "Using properties of exponents, we can write this as $(7^4)^{505} \\cdot 7^3 \\pmod{100}$.",
+    "Since $7^4 \\equiv 1 \\pmod{100}$, we substitute this into the expression: $(1)^{505} \\cdot 7^3 \\pmod{100}$.",
+    "This simplifies to $1 \\cdot 7^3 \\pmod{100}$, which is $7^3 \\pmod{100}$.",
+    "We already calculated $7^3 \\equiv 43 \\pmod{100}$.",
+    "Thus, the last two digits of $7^{2023}$ are $43$."
+  ],
+  "sanityVerificationNotes": "The problem asks for $7^{2023} \\pmod{100}$. The order of $7$ modulo $100$ is $4$, as $7^4 = 2401 \\equiv 1 \\pmod{100}$. Reducing the exponent $2023$ modulo $4$ gives $2023 = 4 \\times 505 + 3$. So, $7^{2023} \\equiv (7^4)^{505} \\cdot 7^3 \\equiv 1^{505} \\cdot 7^3 \\equiv 7^3 \\equiv 343 \\equiv 43 \\pmod{100}$. The solution is consistent."
+}

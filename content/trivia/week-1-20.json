@@ -1,0 +1,29 @@
+{
+  "id": "history-of-math-calculus-inventors",
+  "category": "history-of-math",
+  "eloRating": 1000,
+  "question": [
+    {
+      "text": "Which two mathematicians are generally credited with independently developing calculus in the 17th century?",
+      "style": "prose"
+    }
+  ],
+  "correctAnswer": "Isaac Newton and Gottfried Leibniz",
+  "acceptableAlternatives": [
+    "Newton and Leibniz",
+    "Gottfried Wilhelm Leibniz and Isaac Newton",
+    "Leibniz and Newton"
+  ],
+  "distractors": [
+    "René Descartes and Pierre de Fermat",
+    "Leonhard Euler and Joseph-Louis Lagrange",
+    "Blaise Pascal and Christiaan Huygens"
+  ],
+  "hints": [
+    "Focus on the late 17th century and the period of rapid scientific advancement.",
+    "One was English and formulated laws of physics; the other was German and developed much of the notation still used today.",
+    "Their simultaneous, independent development led to a famous priority dispute over who invented it first."
+  ],
+  "explanation": "Isaac Newton developed his form of calculus, known as fluxions, in the mid-1660s but published much later. Gottfried Leibniz developed his version, with much of the notation we use today (like $\\int$ for integral and $d/dx$ for derivative), in the 1670s and published earlier. Both made profound, independent contributions to its foundation.",
+  "learnMoreArticle": "https://en.wikipedia.org/wiki/Calculus#History"
+}
