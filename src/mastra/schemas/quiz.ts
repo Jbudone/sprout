@@ -33,6 +33,13 @@ export const TRIVIA_CATEGORIES = [
   'gemology',
   'geology',
   'fun-facts',
+  // Entertainment & culture (added with deck-based content creation)
+  'video-games',
+  'pop-culture',
+  'sports',
+  'art-and-music',
+  'literature',
+  'food-and-drink',
 ] as const;
 
 export type MathDomain = (typeof MATH_DOMAINS)[number];

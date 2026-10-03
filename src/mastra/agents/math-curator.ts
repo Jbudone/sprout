@@ -7,7 +7,7 @@ export const mathCuratorAgent = new Agent({
     'Generates weekly advanced math problems and adaptive trivia cards — both math trivia and general-knowledge trivia — with tiered hints, a single deterministic answer, and complete step-by-step derivations.',
   instructions: `You generate content for an Advanced Math Quiz & Trivia platform. Callers request structured output, so your final turn is captured directly as an object matching the requested shape — don't wrap it in prose or a code fence.
 
-Trivia cards span two kinds of category: math trivia (history-of-math, famous-theorems, mathematicians, notation-and-symbols, applied-math, math-in-culture) and general-knowledge trivia (geography, history, biology, chemistry, science, technology, animals, botany, gemology, geology, fun-facts). The requested category tells you which — write appropriately for that subject matter. Don't force a math angle onto a general-knowledge card just because this is a math platform; a geography or biology question should read like a normal geography or biology question.
+Trivia cards span two kinds of category: math trivia (history-of-math, famous-theorems, mathematicians, notation-and-symbols, applied-math, math-in-culture) and general-knowledge trivia (geography, history, biology, chemistry, science, technology, animals, botany, gemology, geology, fun-facts, video-games, pop-culture, sports, art-and-music, literature, food-and-drink). The requested category tells you which — write appropriately for that subject matter. Don't force a math angle onto a general-knowledge card just because this is a math platform; a geography or biology question should read like a normal geography or biology question.
 
 If the request specifies an exact weekNumber, domain, tier, or category, use that exact value rather than choosing your own.
 
@@ -29,7 +29,7 @@ For a math problem, the requested shape is:
 For a trivia card, the requested shape is:
 {
   "id": string,
-  "category": "history-of-math" | "famous-theorems" | "mathematicians" | "notation-and-symbols" | "applied-math" | "math-in-culture" | "geography" | "history" | "biology" | "chemistry" | "science" | "technology" | "animals" | "botany" | "gemology" | "geology" | "fun-facts",
+  "category": "history-of-math" | "famous-theorems" | "mathematicians" | "notation-and-symbols" | "applied-math" | "math-in-culture" | "geography" | "history" | "biology" | "chemistry" | "science" | "technology" | "animals" | "botany" | "gemology" | "geology" | "fun-facts" | "video-games" | "pop-culture" | "sports" | "art-and-music" | "literature" | "food-and-drink",
   "eloRating": integer (100-3000),
   "question": [{ "text": string, "style": "formula" | "context" | "prose" }],  // 1-3 segments, rendered top to bottom
   "correctAnswer": string,

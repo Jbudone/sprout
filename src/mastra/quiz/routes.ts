@@ -4,6 +4,7 @@ import { MathProblemSchema, TriviaCardSchema } from '../schemas/quiz';
 import { getFeedbackForKind, getProgressForKind, recordFeedback, recordProgress, resetProgress } from './db';
 import { getMathProblemById, getTriviaCardById, listMathProblems } from './content';
 import { listDecks, listTriviaEntries } from './content-db';
+import { createApiRoutes } from './create-routes';
 
 const KindParamSchema = z.object({ kind: z.enum(['math', 'trivia']) });
 const KindItemParamSchema = z.object({ kind: z.enum(['math', 'trivia']), itemId: z.string() });
@@ -16,8 +17,18 @@ const FeedbackEnvelopeSchema = z.object({
 
 const DeckRefSchema = z.object({ id: z.string(), name: z.string(), domain: z.string() });
 
+const ProvenanceSchema = z.object({
+  runId: z.string(),
+  generator: z.string(),
+  attempts: z.number(),
+  reviewers: z.array(z.object({ model: z.string(), passed: z.boolean(), issues: z.array(z.string()) })),
+  approvedAt: z.string(),
+});
+
 const QuizListItemSchema = z.object({
   item: z.union([MathProblemSchema, TriviaCardSchema]),
+  // Who wrote and checked a trivia card; null for cards that predate tracking.
+  provenance: ProvenanceSchema.nullable(),
   // Trivia cards belong to a deck; math problems don't (yet).
   deck: DeckRefSchema.nullable(),
   status: z.enum(['unanswered', 'answered', 'skipped']),
@@ -42,19 +53,20 @@ const listQuizRoute = createRoute({
   handler: async ({ kind }) => {
     const [entries, progress, feedback] = await Promise.all([
       kind === 'math'
-        ? listMathProblems().then(items => items.map(item => ({ item, deck: null })))
-        : listTriviaEntries().then(items => items.map(e => ({ item: e.card, deck: e.deck }))),
+        ? listMathProblems().then(items => items.map(item => ({ item, deck: null, provenance: null })))
+        : listTriviaEntries().then(items => items.map(e => ({ item: e.card, deck: e.deck, provenance: e.provenance }))),
       getProgressForKind(kind),
       getFeedbackForKind(kind),
     ]);
 
     return {
-      items: entries.map(({ item, deck }) => {
+      items: entries.map(({ item, deck, provenance }) => {
         const p = progress.get(item.id);
         const f = feedback.get(item.id);
         return {
           item,
           deck,
+          provenance,
           status: p?.status ?? ('unanswered' as const),
           chosenAnswer: p?.chosenAnswer ?? null,
           correct: p?.correct ?? null,
@@ -168,4 +180,4 @@ const resetQuizRoute = createRoute({
   },
 });
 
-export const quizApiRoutes = [listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];
+export const quizApiRoutes = [...createApiRoutes, listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];

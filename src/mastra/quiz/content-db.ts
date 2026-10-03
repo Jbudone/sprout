@@ -20,12 +20,23 @@ export type Deck = {
 
 export type DeckSummary = Deck & { cardCount: number };
 
+// Where a card came from and who checked it. Null for cards that predate
+// tracking (the original migrated cards).
+export type Provenance = {
+  runId: string;
+  generator: string;
+  attempts: number;
+  reviewers: { model: string; passed: boolean; issues: string[] }[];
+  approvedAt: string;
+};
+
 export type TriviaEntry = {
   card: TriviaCard;
+  provenance: Provenance | null;
   deck: { id: string; name: string; domain: string };
 };
 
-async function getClient(): Promise<Client> {
+export async function getContentClient(): Promise<Client> {
   if (!clientPromise) {
     clientPromise = (async () => {
       const dbFileName = process.env.CONTENT_DB_FILE || 'content.db';
@@ -49,6 +60,11 @@ async function getClient(): Promise<Client> {
           created_at TEXT NOT NULL
         )
       `);
+      // Added after the first release; older files get the column here.
+      const cols = await client.execute('PRAGMA table_info(trivia_cards)');
+      if (!cols.rows.some(r => r.name === 'provenance')) {
+        await client.execute('ALTER TABLE trivia_cards ADD COLUMN provenance TEXT');
+      }
       await client.execute('CREATE INDEX IF NOT EXISTS idx_trivia_cards_deck ON trivia_cards(deck_id, position)');
       await seedFromLegacyFiles(client);
       return client;
@@ -85,6 +101,7 @@ async function insertCard(
   client: Client,
   card: TriviaCard,
   deck: { id: string; name: string; domain: string; description?: string },
+  provenance: Provenance | null = null,
 ): Promise<void> {
   const now = new Date().toISOString();
   await client.execute({
@@ -96,8 +113,8 @@ async function insertCard(
     args: [deck.id],
   });
   await client.execute({
-    sql: 'INSERT INTO trivia_cards (id, deck_id, position, data, created_at) VALUES (?, ?, ?, ?, ?)',
-    args: [card.id, deck.id, Number(pos.rows[0].next), JSON.stringify(card), now],
+    sql: 'INSERT INTO trivia_cards (id, deck_id, position, data, created_at, provenance) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [card.id, deck.id, Number(pos.rows[0].next), JSON.stringify(card), now, provenance ? JSON.stringify(provenance) : null],
   });
 }
 
@@ -112,7 +129,7 @@ function rowToDeck(row: Record<string, unknown>): Deck {
 }
 
 export async function listDecks(): Promise<DeckSummary[]> {
-  const client = await getClient();
+  const client = await getContentClient();
   const result = await client.execute(`
     SELECT d.*, COUNT(c.id) AS card_count
     FROM decks d LEFT JOIN trivia_cards c ON c.deck_id = d.id
@@ -123,14 +140,15 @@ export async function listDecks(): Promise<DeckSummary[]> {
 }
 
 export async function listTriviaEntries(): Promise<TriviaEntry[]> {
-  const client = await getClient();
+  const client = await getContentClient();
   const result = await client.execute(`
-    SELECT c.data, d.id AS deck_id, d.name AS deck_name, d.domain AS deck_domain
+    SELECT c.data, c.provenance, d.id AS deck_id, d.name AS deck_name, d.domain AS deck_domain
     FROM trivia_cards c JOIN decks d ON d.id = c.deck_id
     ORDER BY d.domain, d.name, c.position
   `);
   return result.rows.map(row => ({
     card: TriviaCardSchema.parse(JSON.parse(row.data as string)),
+    provenance: row.provenance ? (JSON.parse(row.provenance as string) as Provenance) : null,
     deck: { id: row.deck_id as string, name: row.deck_name as string, domain: row.deck_domain as string },
   }));
 }
@@ -143,11 +161,12 @@ export async function listTriviaEntries(): Promise<TriviaEntry[]> {
 export async function addTriviaCard(
   card: TriviaCard,
   deck: { id: string; name: string; domain: string; description?: string },
+  provenance: Provenance | null = null,
 ): Promise<void> {
-  const client = await getClient();
+  const client = await getContentClient();
   const dup = await client.execute({ sql: 'SELECT 1 FROM trivia_cards WHERE id = ?', args: [card.id] });
   if (dup.rows.length > 0) throw new Error(`A trivia card with id "${card.id}" already exists.`);
-  await insertCard(client, card, deck);
+  await insertCard(client, card, deck, provenance);
 }
 
 /** The deck a card lands in when the caller doesn't name one: its category's deck. */

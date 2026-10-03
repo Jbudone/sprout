@@ -7,6 +7,7 @@ import {
 } from './lib/api';
 import FeedbackControl from './lib/FeedbackControl.svelte';
 import Latex from './lib/Latex.svelte';
+import Provenance from './lib/Provenance.svelte';
 import { swipeNav } from './lib/swipeNav';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
 
@@ -98,6 +99,8 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         class="mt-2 block text-blue-600 underline">Learn more</a
       >
     </div>
+
+    <Provenance provenance={current.provenance} />
 
     <details class="rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700">
       <summary class="cursor-pointer font-medium text-gray-500 dark:text-gray-400">Hints</summary>

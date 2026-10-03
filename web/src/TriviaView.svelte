@@ -19,6 +19,7 @@ import {
 } from './lib/deckFilter';
 import FeedbackControl from './lib/FeedbackControl.svelte';
 import Latex from './lib/Latex.svelte';
+import Provenance from './lib/Provenance.svelte';
 import { seededShuffle } from './lib/shuffle';
 import { swipeNav } from './lib/swipeNav';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
@@ -206,6 +207,8 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
           class="mt-2 block text-blue-600 underline">Learn more</a
         >
       </div>
+
+      <Provenance provenance={current.provenance} />
 
       {#key current.item.id}
         <FeedbackControl feedback={current.feedback} onSubmit={submitFeedback} />

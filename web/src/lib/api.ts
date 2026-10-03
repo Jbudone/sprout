@@ -52,8 +52,20 @@ export type Deck = DeckRef & {
   cardCount: number;
 };
 
+export type Reviewer = { model: string; passed: boolean; issues: string[] };
+
+// Who wrote and checked a card; null for cards that predate tracking.
+export type Provenance = {
+  runId: string;
+  generator: string;
+  attempts: number;
+  reviewers: Reviewer[];
+  approvedAt: string;
+};
+
 export type QuizListItem<T> = {
   item: T;
+  provenance: Provenance | null;
   // Set for trivia cards; math problems don't belong to a deck.
   deck: DeckRef | null;
   status: QuizStatus;
@@ -170,4 +182,107 @@ export async function getContentLibraryByQuality(
   if (minScore !== undefined) params.append('minScore', minScore.toString());
   if (maxScore !== undefined) params.append('maxScore', maxScore.toString());
   return request(`/library/by-quality/${kind}?${params}`, { method: 'GET' });
+}
+
+// ---- Create tab ----
+
+export type ModelOption = {
+  id: string;
+  label: string;
+  provider: string;
+  available: boolean;
+};
+
+export type RunConfig = {
+  generator: string;
+  reviewers: string[];
+  reviewMode: 'all' | 'majority';
+  maxAttempts: number;
+};
+
+export type Brief = {
+  brief: string;
+  exclude: string[];
+  count: number;
+  deckName: string;
+  domain: string;
+};
+
+export type RunStatus = 'running' | 'done' | 'failed';
+export type CardStatus = 'pending' | 'approved' | 'rejected' | 'auto_rejected';
+
+export type Run = {
+  id: string;
+  brief: Brief;
+  config: RunConfig;
+  status: RunStatus;
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+};
+
+export type PendingCard = {
+  id: string;
+  runId: string;
+  card: TriviaCard;
+  status: CardStatus;
+  rejectReason: string | null;
+  attempts: number;
+  reviewers: Reviewer[];
+  issues: string[];
+  createdAt: string;
+};
+
+export function listModels(): Promise<{
+  models: ModelOption[];
+  defaults: { generator: string; reviewers: string[] };
+  openrouterConfigured: boolean;
+}> {
+  return request('/create/models');
+}
+
+export function startRun(
+  brief: Brief,
+  config: RunConfig,
+): Promise<{ runId: string }> {
+  return request('/create/runs', {
+    method: 'POST',
+    body: JSON.stringify({ brief, config }),
+  });
+}
+
+export function listRuns(): Promise<{
+  runs: (Run & { counts: Record<CardStatus, number> })[];
+}> {
+  return request('/create/runs');
+}
+
+export function getRun(
+  runId: string,
+): Promise<{ run: Run; cards: PendingCard[] }> {
+  return request(`/create/runs/${encodeURIComponent(runId)}`);
+}
+
+export function approveCard(cardId: string): Promise<{ success: boolean }> {
+  return request(`/create/cards/${encodeURIComponent(cardId)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function rejectCard(
+  cardId: string,
+  reason?: string,
+): Promise<{ success: boolean }> {
+  return request(`/create/cards/${encodeURIComponent(cardId)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function approveAll(runId: string): Promise<{ approved: number }> {
+  return request(`/create/runs/${encodeURIComponent(runId)}/approve-all`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }

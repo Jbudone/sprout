@@ -10,6 +10,9 @@ export const SUGGESTED_DECK_DOMAINS = [
   'history-geography',
   'technology',
   'games',
+  'entertainment',
+  'sports',
+  'arts',
   'general',
 ] as const;
 
@@ -33,6 +36,12 @@ export const CATEGORY_DEFAULT_DOMAIN: Record<TriviaCategory, string> = {
   botany: 'nature',
   gemology: 'nature',
   'fun-facts': 'general',
+  'video-games': 'games',
+  'pop-culture': 'entertainment',
+  sports: 'sports',
+  'art-and-music': 'arts',
+  literature: 'arts',
+  'food-and-drink': 'general',
 };
 
 export function titleCase(slug: string): string {

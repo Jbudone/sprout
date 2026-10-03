@@ -13,10 +13,49 @@ type Flow = {
 
 const flows: Flow[] = [
   {
-    name: 'Make new quiz content',
+    name: 'Create a deck',
+    run: 'This app: Create tab',
+    summary:
+      'You describe a deck, AI writes the cards, other AI models check them, and you decide what gets in.',
+    steps: [
+      {
+        title: 'Your brief',
+        who: 'You, in the Create tab',
+        note: 'Describe the deck in plain words, list terms to leave out, pick a deck name and domain, and choose the generator and reviewer models.',
+        kind: 'you',
+      },
+      {
+        title: 'Generate',
+        who: 'Generator model (your pick)',
+        note: 'Writes one card at a time, told what is already in the deck so it does not repeat.',
+        kind: 'auto',
+      },
+      {
+        title: 'Mechanical check',
+        who: 'Plain code, no AI',
+        note: 'Distinct hints and options, one clear answer, no excluded terms, no near-duplicate question.',
+        kind: 'auto',
+      },
+      {
+        title: 'Reviewers',
+        who: 'Reviewer models (your picks)',
+        note: 'Each checks facts, difficulty and wording. Pass needs all (or most) to agree.',
+        kind: 'auto',
+      },
+      {
+        title: 'Your decision',
+        who: 'You, in the Create tab',
+        note: 'Approve moves the card into the deck with a record of who wrote and checked it. Reject takes a one-tap reason. Cards that failed review can still be approved.',
+        kind: 'you',
+      },
+    ],
+    loop: 'Steps 2–4 repeat up to your attempts limit per card; failed checks are fed back to the generator. Every model call is logged (tokens, time) for the upcoming usage stats.',
+  },
+  {
+    name: 'Bulk content from Studio',
     run: 'Mastra Studio → Workflows → contentCreation (batch) or contentAuthor (one item)',
     summary:
-      'AI writes questions, two checks filter them, and only passing items reach the quiz.',
+      'The older route, still used for math. Trivia from here goes straight into the deck for its category with no approval step.',
     steps: [
       {
         title: 'Request',
@@ -47,18 +86,6 @@ const flows: Flow[] = [
         who: 'Workflow step',
         note: 'Trivia cards are added to the deck for their category (content.db); math goes to content/math. Items that fail 3 times are dropped.',
         kind: 'auto',
-      },
-      {
-        title: 'Pending queue',
-        who: 'New Review tab section',
-        note: 'Instead of saving straight away, items wait here for you to approve, edit or reject.',
-        kind: 'planned',
-      },
-      {
-        title: 'Your verdict',
-        who: 'You, in this app',
-        note: 'Approve or reject with a one-tap reason. Saved so we can see whether the AI judge agrees with you.',
-        kind: 'planned',
       },
     ],
     loop: 'Steps 2–4 repeat up to 3 times per item. Judge feedback is passed back into the next attempt.',

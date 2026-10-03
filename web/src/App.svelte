@@ -1,11 +1,12 @@
 <script lang="ts">
+import CreateView from './CreateView.svelte';
 import HowItWorksView from './HowItWorksView.svelte';
 import { resetProgress } from './lib/api';
 import MathView from './MathView.svelte';
 import TriviaReviewView from './TriviaReviewView.svelte';
 import TriviaView from './TriviaView.svelte';
 
-let tab = $state<'math' | 'trivia' | 'review' | 'how'>('trivia');
+let tab = $state<'math' | 'trivia' | 'review' | 'create' | 'how'>('trivia');
 let confirmingReset = $state(false);
 let confirmTimeout: ReturnType<typeof setTimeout> | undefined;
 // Bumped on reset so {#key} below remounts both views, forcing a fresh fetch.
@@ -62,6 +63,16 @@ async function handleResetClick() {
     <button
       type="button"
       class="flex-1 py-3 text-center font-medium"
+      class:border-b-2={tab === 'create'}
+      class:border-blue-600={tab === 'create'}
+      class:text-blue-600={tab === 'create'}
+      onclick={() => (tab = 'create')}
+    >
+      Create
+    </button>
+    <button
+      type="button"
+      class="flex-1 py-3 text-center font-medium"
       class:border-b-2={tab === 'how'}
       class:border-blue-600={tab === 'how'}
       class:text-blue-600={tab === 'how'}
@@ -84,6 +95,8 @@ async function handleResetClick() {
       <MathView />
     {:else if tab === 'review'}
       <TriviaReviewView />
+    {:else if tab === 'create'}
+      <CreateView />
     {:else if tab === 'how'}
       <HowItWorksView />
     {:else}
