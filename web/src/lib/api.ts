@@ -286,3 +286,85 @@ export function approveAll(runId: string): Promise<{ approved: number }> {
     body: JSON.stringify({}),
   });
 }
+
+// ---- Spend caps and stats ----
+
+export type Settings = { perRunCapUsd: number; monthlyCapUsd: number };
+
+export type Estimate = {
+  worstCaseUsd: number;
+  typicalUsd: number;
+  worstCaseCalls: number;
+  unpricedModels: string[];
+  perRunCapUsd: number;
+  monthlyCapUsd: number;
+  monthToDateUsd: number;
+};
+
+export type CallStats = {
+  model: string;
+  role: 'generator' | 'reviewer';
+  calls: number;
+  failedCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  estimatedShare: number;
+  avgLatencyMs: number;
+};
+
+export type GeneratorStats = {
+  model: string;
+  runs: number;
+  cards: number;
+  passedReview: number;
+  approved: number;
+  rejected: number;
+  costUsd: number;
+  costPerApprovedUsd: number | null;
+};
+
+export type ReviewerStats = {
+  model: string;
+  reviews: number;
+  passed: number;
+  decided: number;
+  agreed: number;
+  costUsd: number;
+};
+
+export type StatsSummary = {
+  settings: Settings;
+  monthToDateUsd: number;
+  allTimeUsd: number;
+  calls: CallStats[];
+  generators: GeneratorStats[];
+  reviewers: ReviewerStats[];
+  openrouter: {
+    totalCredits: number;
+    totalUsage: number;
+    remaining: number;
+    usageMonthly: number | null;
+  } | null;
+};
+
+export function estimateRun(
+  count: number,
+  config: RunConfig,
+): Promise<Estimate> {
+  return request('/create/estimate', {
+    method: 'POST',
+    body: JSON.stringify({ count, config }),
+  });
+}
+
+export function saveSettings(settings: Settings): Promise<Settings> {
+  return request('/create/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  });
+}
+
+export function getStats(): Promise<StatsSummary> {
+  return request('/stats/summary');
+}

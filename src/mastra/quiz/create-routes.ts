@@ -6,6 +6,10 @@ import { addTriviaCard, type Provenance } from './content-db';
 import {
   BriefSchema,
   createRun,
+  getSettings,
+  monthToDateSpend,
+  saveSettings,
+  SettingsSchema,
   getPendingCard,
   getRun,
   listRunCards,
@@ -15,6 +19,8 @@ import {
 } from './creation-db';
 import { slugify } from './decks';
 import { runGeneration } from './generate';
+import { estimateRun } from './pricing';
+import { computeStats } from './stats';
 import { DEFAULT_GENERATOR, DEFAULT_REVIEWERS, MODEL_OPTIONS, providerAvailable, providerOf } from './models';
 
 const ReviewerSchema = z.object({ model: z.string(), passed: z.boolean(), issues: z.array(z.string()) });
@@ -83,12 +89,136 @@ const startRunRoute = createRoute({
         );
       }
     }
+    const [estimate, settings, monthSpend] = await Promise.all([
+      estimateRun(brief.count, config),
+      getSettings(),
+      monthToDateSpend(),
+    ]);
+    if (estimate.worstCaseUsd > settings.perRunCapUsd) {
+      throw new Error(
+        `Worst case for this run is about $${estimate.worstCaseUsd.toFixed(2)}, over your $${settings.perRunCapUsd.toFixed(2)} per-run cap. Reduce cards, attempts or reviewers, pick cheaper models, or raise the cap in Stats.`,
+      );
+    }
+    if (monthSpend + estimate.typicalUsd > settings.monthlyCapUsd) {
+      throw new Error(
+        `This month you have spent $${monthSpend.toFixed(2)} of your $${settings.monthlyCapUsd.toFixed(2)} cap, and this run would typically cost about $${estimate.typicalUsd.toFixed(2)} more. Raise the monthly cap in Stats to continue.`,
+      );
+    }
     const runId = randomUUID();
     await createRun(runId, brief, config);
     // Deliberately not awaited: generation takes minutes. runGeneration never throws.
     void runGeneration(runId, brief, config, slugify(brief.deckName));
     return { runId };
   },
+});
+
+const EstimateSchema = z.object({
+  worstCaseUsd: z.number(),
+  typicalUsd: z.number(),
+  worstCaseCalls: z.number(),
+  unpricedModels: z.array(z.string()),
+  perRunCapUsd: z.number(),
+  monthlyCapUsd: z.number(),
+  monthToDateUsd: z.number(),
+});
+
+const estimateRoute = createRoute({
+  method: 'POST',
+  path: '/quiz/create/estimate',
+  responseType: 'json',
+  bodySchema: z.object({ count: z.number().int().min(1).max(30), config: RunConfigSchema }),
+  responseSchema: EstimateSchema,
+  summary: 'Estimated dollar cost of a run, next to the spend caps',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async ({ count, config }) => {
+    const [estimate, settings, monthSpend] = await Promise.all([estimateRun(count, config), getSettings(), monthToDateSpend()]);
+    return { ...estimate, perRunCapUsd: settings.perRunCapUsd, monthlyCapUsd: settings.monthlyCapUsd, monthToDateUsd: monthSpend };
+  },
+});
+
+const getSettingsRoute = createRoute({
+  method: 'GET',
+  path: '/quiz/create/settings',
+  responseType: 'json',
+  responseSchema: SettingsSchema,
+  summary: 'Spend caps',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async () => getSettings(),
+});
+
+const saveSettingsRoute = createRoute({
+  method: 'POST',
+  path: '/quiz/create/settings',
+  responseType: 'json',
+  bodySchema: SettingsSchema,
+  responseSchema: SettingsSchema,
+  summary: 'Update spend caps',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async ({ perRunCapUsd, monthlyCapUsd }) => {
+    await saveSettings({ perRunCapUsd, monthlyCapUsd });
+    return getSettings();
+  },
+});
+
+const CallStatsSchema = z.object({
+  model: z.string(),
+  role: z.enum(['generator', 'reviewer']),
+  calls: z.number(),
+  failedCalls: z.number(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  costUsd: z.number(),
+  estimatedShare: z.number(),
+  avgLatencyMs: z.number(),
+});
+
+const statsRoute = createRoute({
+  method: 'GET',
+  path: '/quiz/stats/summary',
+  responseType: 'json',
+  responseSchema: z.object({
+    settings: SettingsSchema,
+    monthToDateUsd: z.number(),
+    allTimeUsd: z.number(),
+    calls: z.array(CallStatsSchema),
+    generators: z.array(
+      z.object({
+        model: z.string(),
+        runs: z.number(),
+        cards: z.number(),
+        passedReview: z.number(),
+        approved: z.number(),
+        rejected: z.number(),
+        costUsd: z.number(),
+        costPerApprovedUsd: z.number().nullable(),
+      }),
+    ),
+    reviewers: z.array(
+      z.object({
+        model: z.string(),
+        reviews: z.number(),
+        passed: z.number(),
+        decided: z.number(),
+        agreed: z.number(),
+        costUsd: z.number(),
+      }),
+    ),
+    openrouter: z
+      .object({
+        totalCredits: z.number(),
+        totalUsage: z.number(),
+        remaining: z.number(),
+        usageMonthly: z.number().nullable(),
+      })
+      .nullable(),
+  }),
+  summary: 'Model usage, cost and quality stats, spend against caps, and the OpenRouter balance',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async () => computeStats(),
 });
 
 const listRunsRoute = createRoute({
@@ -192,6 +322,10 @@ const approveAllRoute = createRoute({
 });
 
 export const createApiRoutes = [
+  statsRoute,
+  estimateRoute,
+  getSettingsRoute,
+  saveSettingsRoute,
   modelsRoute,
   startRunRoute,
   listRunsRoute,

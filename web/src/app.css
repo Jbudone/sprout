@@ -7,3 +7,57 @@
 body {
   margin: 0;
 }
+
+/* Answer feedback. Skipped entirely for people who prefer reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes sprout-pop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.04);
+      box-shadow: 0 0 0 4px rgb(34 197 94 / 0.35);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(34 197 94 / 0);
+    }
+  }
+  @keyframes sprout-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-6px);
+    }
+    40% {
+      transform: translateX(6px);
+    }
+    60% {
+      transform: translateX(-4px);
+    }
+    80% {
+      transform: translateX(4px);
+    }
+  }
+  @keyframes sprout-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .anim-pop {
+    animation: sprout-pop 0.5s ease-out;
+  }
+  .anim-shake {
+    animation: sprout-shake 0.4s ease-out;
+  }
+  .anim-rise {
+    animation: sprout-rise 0.35s ease-out;
+  }
+}

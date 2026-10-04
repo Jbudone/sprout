@@ -9,6 +9,7 @@ import {
   skipQuiz,
   type TriviaCard,
 } from './lib/api';
+import DeckBrowser from './lib/DeckBrowser.svelte';
 import DeckPicker from './lib/DeckPicker.svelte';
 import {
   loadFilter,
@@ -35,9 +36,13 @@ let loading = $state(true);
 let error = $state<string | null>(null);
 // Only relevant right after the user clicks an option this session — drives
 // the correct/wrong flash. Reset whenever the index changes.
+let browsing = $state(false);
 let justAnswered = $state<{ correct: boolean } | null>(null);
 
 const current = $derived(items[index]);
+const playedCount = $derived(
+  items.filter((i) => i.status !== 'unanswered').length,
+);
 const options = $derived(
   current
     ? seededShuffle(
@@ -68,6 +73,7 @@ function setCurrent(next: QuizListItem<TriviaCard>) {
 }
 
 function changeFilter(next: string) {
+  browsing = false;
   filter = next;
   saveFilter(next);
   buildQueue();
@@ -136,7 +142,19 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
 
 <div class="mx-auto flex max-w-md flex-col gap-4 p-4" use:swipeNav={{ onSwipeRight: goBack }}>
   {#if decks.length > 0}
-    <DeckPicker {decks} value={filter} onChange={changeFilter} />
+    <div class="flex items-end gap-2">
+      <div class="min-w-0 flex-1"><DeckPicker {decks} value={filter} onChange={changeFilter} /></div>
+      <button
+        type="button"
+        class="shrink-0 rounded-lg border border-gray-300 px-3 py-1 text-sm dark:border-gray-600"
+        onclick={() => (browsing = !browsing)}
+      >
+        {browsing ? 'Close' : 'Decks'}
+      </button>
+    </div>
+    {#if browsing}
+      <DeckBrowser {decks} items={allItems} value={filter} onPick={changeFilter} />
+    {/if}
   {/if}
 
   {#if loading}
@@ -149,8 +167,21 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       <p class="mt-2 text-gray-500">Swipe right to review a past question.</p>
     </div>
   {:else}
-    <div class="text-xs text-gray-400">
-      {index + 1} / {items.length} · {current.deck?.name ?? current.item.category}
+    <div class="flex flex-col gap-1">
+      <div class="flex justify-between text-xs text-gray-400">
+        <span>{current.deck?.name ?? current.item.category}</span>
+        <span>{index + 1} / {items.length}</span>
+      </div>
+      <div
+        class="h-1 overflow-hidden rounded bg-gray-200 dark:bg-gray-700"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={items.length}
+        aria-valuenow={playedCount}
+        aria-label="Cards played in this queue"
+      >
+        <div class="h-full bg-blue-500 transition-all duration-500" style="width: {items.length ? (100 * playedCount) / items.length : 0}%"></div>
+      </div>
     </div>
 
     <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
@@ -166,6 +197,8 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
           type="button"
           disabled={answered}
           class="rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-default"
+          class:anim-pop={justAnswered && isCorrectOption}
+          class:anim-shake={justAnswered && isChosen && !isCorrectOption}
           class:bg-green-100={answered && isCorrectOption}
           class:border-green-500={answered && isCorrectOption}
           class:bg-red-100={answered && isChosen && !isCorrectOption}
@@ -187,7 +220,7 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       {#if justAnswered}
         {#key index}
           <div
-            class="rounded-xl p-3 text-center font-semibold"
+            class="anim-rise rounded-xl p-3 text-center font-semibold"
             class:bg-green-100={justAnswered.correct}
             class:text-green-800={justAnswered.correct}
             class:bg-red-100={!justAnswered.correct}
@@ -198,7 +231,7 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         {/key}
       {/if}
 
-      <div class="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
+      <div class="anim-rise rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
         <Latex text={current.item.explanation} />
         <a
           href={current.item.learnMoreArticle}

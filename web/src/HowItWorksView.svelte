@@ -21,7 +21,7 @@ const flows: Flow[] = [
       {
         title: 'Your brief',
         who: 'You, in the Create tab',
-        note: 'Describe the deck in plain words, list terms to leave out, pick a deck name and domain, and choose the generator and reviewer models.',
+        note: 'Describe the deck in plain words, list terms to leave out, pick a deck name and domain, and choose the generator and reviewer models. The form shows an estimated cost and refuses runs over your spend cap.',
         kind: 'you',
       },
       {
@@ -49,7 +49,7 @@ const flows: Flow[] = [
         kind: 'you',
       },
     ],
-    loop: 'Steps 2–4 repeat up to your attempts limit per card; failed checks are fed back to the generator. Every model call is logged (tokens, time) for the upcoming usage stats.',
+    loop: 'Steps 2–4 repeat up to your attempts limit per card; failed checks are fed back to the generator. Every model call is logged (tokens, cost, time); the Stats tab turns that into spend against your caps, your OpenRouter balance, and which models earn their cost. A run also stops early if real spend reaches a cap.',
   },
   {
     name: 'Bulk content from Studio',
@@ -105,7 +105,7 @@ const flows: Flow[] = [
       {
         title: 'You answer',
         who: 'You, in this app',
-        note: 'Pick all decks (shuffled) or one domain or deck, then answer, skip, or flag a card as too easy, too hard, not fun, or a standout.',
+        note: 'Pick all decks (shuffled) or one domain or deck (the Decks button opens a browser with progress per deck), then answer, skip, or flag a card as too easy, too hard, not fun, or a standout.',
         kind: 'you',
       },
       {

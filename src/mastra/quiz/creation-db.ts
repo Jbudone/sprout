@@ -97,6 +97,11 @@ async function db(): Promise<Client> {
           created_at TEXT NOT NULL
         )
       `);
+      const callCols = await client.execute('PRAGMA table_info(model_calls)');
+      if (!callCols.rows.some(r => r.name === 'cost_estimated')) {
+        await client.execute('ALTER TABLE model_calls ADD COLUMN cost_estimated INTEGER');
+      }
+      await client.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
       // A server restart mid-run leaves a run 'running' forever; mark it failed.
       await client.execute({
         sql: "UPDATE gen_runs SET status = 'failed', error = ?, finished_at = ? WHERE status = 'running'",
@@ -230,14 +235,15 @@ export async function logModelCall(call: {
   inputTokens?: number;
   outputTokens?: number;
   cost?: number;
+  costEstimated?: boolean;
   latencyMs: number;
   ok: boolean;
   error?: string;
 }): Promise<void> {
   const client = await db();
   await client.execute({
-    sql: `INSERT INTO model_calls (run_id, card_id, role, model, input_tokens, output_tokens, cost, latency_ms, ok, error, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO model_calls (run_id, card_id, role, model, input_tokens, output_tokens, cost, cost_estimated, latency_ms, ok, error, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       call.runId,
       call.cardId ?? null,
@@ -246,6 +252,7 @@ export async function logModelCall(call: {
       call.inputTokens ?? null,
       call.outputTokens ?? null,
       call.cost ?? null,
+      call.costEstimated === undefined ? null : call.costEstimated ? 1 : 0,
       call.latencyMs,
       call.ok ? 1 : 0,
       call.error ?? null,
@@ -267,3 +274,71 @@ export async function questionsForDedupe(deckId: string, runId: string): Promise
     return card.question.map(s => s.text).join(' ');
   });
 }
+
+// ---- spend caps ----
+
+export const SettingsSchema = z.object({
+  perRunCapUsd: z.number().min(0.01).max(1000),
+  monthlyCapUsd: z.number().min(0.01).max(10000),
+});
+export type Settings = z.infer<typeof SettingsSchema>;
+
+const DEFAULT_SETTINGS: Settings = { perRunCapUsd: 1, monthlyCapUsd: 5 };
+
+export async function getSettings(): Promise<Settings> {
+  const client = await db();
+  const r = await client.execute('SELECT key, value FROM settings');
+  const stored = Object.fromEntries(r.rows.map(row => [row.key as string, Number(row.value)]));
+  return {
+    perRunCapUsd: stored.perRunCapUsd > 0 ? stored.perRunCapUsd : DEFAULT_SETTINGS.perRunCapUsd,
+    monthlyCapUsd: stored.monthlyCapUsd > 0 ? stored.monthlyCapUsd : DEFAULT_SETTINGS.monthlyCapUsd,
+  };
+}
+
+export async function saveSettings(settings: Settings): Promise<void> {
+  const client = await db();
+  for (const [key, value] of Object.entries(settings)) {
+    await client.execute({
+      sql: 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      args: [key, String(value)],
+    });
+  }
+}
+
+/** Start of the current calendar month (UTC), as an ISO string. */
+function monthStartIso(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+/** Spend logged by this app this month (all runs). */
+export async function monthToDateSpend(): Promise<number> {
+  const client = await db();
+  const r = await client.execute({
+    sql: 'SELECT COALESCE(SUM(cost), 0) AS total FROM model_calls WHERE created_at >= ?',
+    args: [monthStartIso()],
+  });
+  return Number(r.rows[0].total);
+}
+
+export async function runSpend(runId: string): Promise<number> {
+  const client = await db();
+  const r = await client.execute({ sql: 'SELECT COALESCE(SUM(cost), 0) AS total FROM model_calls WHERE run_id = ?', args: [runId] });
+  return Number(r.rows[0].total);
+}
+
+/** Average tokens per successful call for a model and role, from the last 50 calls; null if never used. */
+export async function getObservedTokens(model: string, role: 'generator' | 'reviewer'): Promise<{ input: number; output: number } | null> {
+  const client = await db();
+  const r = await client.execute({
+    sql: `SELECT AVG(input_tokens) AS i, AVG(output_tokens) AS o, COUNT(*) AS n FROM
+            (SELECT input_tokens, output_tokens FROM model_calls
+             WHERE model = ? AND role = ? AND ok = 1 AND input_tokens IS NOT NULL AND output_tokens IS NOT NULL
+             ORDER BY id DESC LIMIT 50)`,
+    args: [model, role],
+  });
+  const row = r.rows[0];
+  return Number(row.n) > 0 ? { input: Number(row.i), output: Number(row.o) } : null;
+}
+
+export { db as getCreationDb };

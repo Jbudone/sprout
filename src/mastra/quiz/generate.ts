@@ -12,17 +12,51 @@ import {
   addPendingCard,
   cardIdTaken,
   finishRun,
+  getSettings,
   logModelCall,
+  monthToDateSpend,
   questionsForDedupe,
   type Brief,
   type RunConfig,
 } from './creation-db';
+import { costFor } from './pricing';
 import { slugify } from './decks';
 import type { Provenance } from './content-db';
 
 const CONCURRENCY = 3;
 
 type Reviewer = Provenance['reviewers'][number];
+
+// Spend tracking for one run. `spent` is this run's cost so far; the run stops
+// as soon as it reaches the per-run cap or uses up what is left of the
+// monthly cap. Cost is exact when the provider reports it, else tokens x price.
+type Budget = { runCap: number; monthlyRoom: number; spent: number; stopReason: string | null };
+
+class SpendCapReached extends Error {}
+
+function checkBudget(b: Budget) {
+  if (!b.stopReason && b.spent >= b.runCap) b.stopReason = `per-run cap of $${b.runCap.toFixed(2)}`;
+  if (!b.stopReason && b.spent >= b.monthlyRoom) b.stopReason = 'monthly cap';
+  if (b.stopReason) throw new SpendCapReached(b.stopReason);
+}
+
+async function recordCall(
+  budget: Budget,
+  call: { runId: string; cardId?: string; role: 'generator' | 'reviewer'; model: string; latencyMs: number; ok: boolean; error?: string },
+  usage?: { inputTokens?: number; outputTokens?: number; cost?: number },
+) {
+  const priced = usage
+    ? await costFor(call.model, { input: usage.inputTokens, output: usage.outputTokens }, usage.cost)
+    : undefined;
+  if (priced) budget.spent += priced.cost;
+  await logModelCall({
+    ...call,
+    inputTokens: usage?.inputTokens,
+    outputTokens: usage?.outputTokens,
+    cost: priced?.cost,
+    costEstimated: priced?.estimated,
+  });
+}
 
 const ReviewSchema = z.object({ passed: z.boolean(), issues: z.array(z.string()) });
 
@@ -111,6 +145,7 @@ function passes(reviews: Reviewer[], mode: RunConfig['reviewMode']): boolean {
 }
 
 async function generateOne(args: {
+  budget: Budget;
   runId: string;
   slot: number;
   brief: Brief;
@@ -120,7 +155,7 @@ async function generateOne(args: {
   reviewerAgents: { model: string; agent: Agent }[];
   examples: string;
 }): Promise<void> {
-  const { runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples } = args;
+  const { budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples } = args;
   let feedback: string[] = [];
   let lastCard: TriviaCard | null = null;
   let lastReviews: Reviewer[] = [];
@@ -144,15 +179,16 @@ async function generateOne(args: {
       .join('\n\n');
 
     // --- generate ---
+    checkBudget(budget);
     const t0 = Date.now();
     let card: TriviaCard;
     try {
       const result = await generatorAgent.generate(prompt, { structuredOutput: { schema: TriviaCardSchema } });
       card = TriviaCardSchema.parse(result.object);
-      await logModelCall({ runId, role: 'generator', model: config.generator, latencyMs: Date.now() - t0, ok: true, ...usageOf(result) });
+      await recordCall(budget, { runId, role: 'generator', model: config.generator, latencyMs: Date.now() - t0, ok: true }, usageOf(result));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      await logModelCall({ runId, role: 'generator', model: config.generator, latencyMs: Date.now() - t0, ok: false, error: message });
+      await recordCall(budget, { runId, role: 'generator', model: config.generator, latencyMs: Date.now() - t0, ok: false, error: message });
       feedback = [`The generator call failed: ${message}`];
       continue;
     }
@@ -174,6 +210,7 @@ async function generateOne(args: {
     // --- reviewers (parallel) ---
     const reviews: Reviewer[] = await Promise.all(
       reviewerAgents.map(async ({ model, agent }): Promise<Reviewer> => {
+        checkBudget(budget);
         const start = Date.now();
         try {
           const result = await agent.generate(
@@ -188,11 +225,11 @@ async function generateOne(args: {
               .join('\n\n'),
             { structuredOutput: { schema: ReviewSchema } },
           );
-          await logModelCall({ runId, cardId: card.id, role: 'reviewer', model, latencyMs: Date.now() - start, ok: true, ...usageOf(result) });
+          await recordCall(budget, { runId, cardId: card.id, role: 'reviewer', model, latencyMs: Date.now() - start, ok: true }, usageOf(result));
           return { model, passed: result.object.passed, issues: result.object.issues };
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
-          await logModelCall({ runId, cardId: card.id, role: 'reviewer', model, latencyMs: Date.now() - start, ok: false, error: message });
+          await recordCall(budget, { runId, cardId: card.id, role: 'reviewer', model, latencyMs: Date.now() - start, ok: false, error: message });
           // A reviewer that errors counts as not passing, so a broken model can't wave cards through.
           return { model, passed: false, issues: [`Reviewer call failed: ${message}`] };
         }
@@ -221,16 +258,28 @@ export async function runGeneration(runId: string, brief: Brief, config: RunConf
       config.reviewers.map(async model => ({ model, agent: await agentFor(contentQualityAgent, 'reviewer', model) })),
     );
 
+    const settings = await getSettings();
+    const budget: Budget = {
+      runCap: settings.perRunCapUsd,
+      monthlyRoom: settings.monthlyCapUsd - (await monthToDateSpend()),
+      spent: 0,
+      stopReason: null,
+    };
+
     let next = 1;
     const worker = async () => {
       while (next <= brief.count) {
         const slot = next++;
-        await generateOne({ runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples });
+        await generateOne({ budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples });
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, brief.count) }, worker));
     await finishRun(runId, 'done');
   } catch (e) {
+    if (e instanceof SpendCapReached) {
+      await finishRun(runId, 'done', `Stopped early: the ${e.message} was reached. Raise it in Stats if you want runs to go further.`);
+      return;
+    }
     await finishRun(runId, 'failed', e instanceof Error ? e.message : String(e));
   }
 }

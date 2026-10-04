@@ -5,6 +5,8 @@ import {
   type Brief,
   type CardStatus,
   type Deck,
+  type Estimate,
+  estimateRun,
   getRun,
   listDecks,
   listModels,
@@ -61,6 +63,11 @@ let formError = $state<string | null>(null);
 let models = $state<ModelOption[]>([]);
 let openrouterConfigured = $state(true);
 let decks = $state<Deck[]>([]);
+let estimate = $state<Estimate | null>(null);
+const overCap = $derived(
+  estimate !== null && estimate.worstCaseUsd > estimate.perRunCapUsd,
+);
+const usd = (n: number) => (n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`);
 
 // ---- runs ----
 let runs = $state<Awaited<ReturnType<typeof listRuns>>['runs']>([]);
@@ -109,7 +116,6 @@ const allReviewers = $derived(
     (m, i, a) => m && a.indexOf(m) === i,
   ),
 );
-const maxCalls = $derived(count * maxAttempts * (1 + allReviewers.length));
 const domainOptions = $derived([
   ...new Set([...SUGGESTED_DOMAINS, ...decks.map((d) => d.domain)]),
 ]);
@@ -146,6 +152,28 @@ $effect(() => {
     .catch((e) => {
       formError = e instanceof Error ? e.message : String(e);
     });
+});
+
+// Re-estimate the dollar cost whenever the models, count or attempts change.
+$effect(() => {
+  const config: RunConfig = {
+    generator: generatorModel,
+    reviewers: allReviewers,
+    reviewMode,
+    maxAttempts,
+  };
+  const n = count;
+  if (!generatorModel || !Number.isInteger(n) || n < 1 || n > 30) return;
+  const timer = setTimeout(() => {
+    estimateRun(n, config)
+      .then((e) => {
+        estimate = e;
+      })
+      .catch(() => {
+        estimate = null;
+      });
+  }, 400);
+  return () => clearTimeout(timer);
 });
 
 // Poll while a run is in progress so new cards appear as they finish.
@@ -373,12 +401,24 @@ function toggleReviewer(id: string) {
         OpenRouter models are disabled: add OPENROUTER_API_KEY to .env and restart the dev server.
       </p>
     {/if}
-    <p class="text-xs text-gray-500">Worst case this makes {maxCalls} model calls. Most cards need far fewer.</p>
+    {#if estimate}
+      <p class="text-xs {overCap ? 'text-red-600' : 'text-gray-500'}">
+        About {usd(estimate.typicalUsd)} typical, up to {usd(estimate.worstCaseUsd)} worst case
+        ({estimate.worstCaseCalls} calls). Cap per run {usd(estimate.perRunCapUsd)}; this month
+        {usd(estimate.monthToDateUsd)} of {usd(estimate.monthlyCapUsd)}.
+        {#if overCap}Over the per-run cap: reduce cards, attempts or reviewers, or raise the cap in Stats.{/if}
+      </p>
+      {#if estimate.unpricedModels.length > 0}
+        <p class="text-xs text-amber-600">
+          No list price for {estimate.unpricedModels.join(', ')}; a pessimistic price is assumed.
+        </p>
+      {/if}
+    {/if}
     {#if formError}<p class="text-sm text-red-600">{formError}</p>{/if}
 
     <button
       type="submit"
-      disabled={starting}
+      disabled={starting || overCap}
       class="rounded-xl bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
     >
       {starting ? 'Starting…' : 'Generate deck'}
@@ -420,6 +460,7 @@ function toggleReviewer(id: string) {
             Run failed: {run.error}
           {:else}
             Finished: {cards.length} of {run.brief.count} cards produced.
+            {#if run.error}<span class="text-amber-600">{run.error}</span>{/if}
           {/if}
           Generator {short(run.config.generator)}; reviewers {run.config.reviewers.map(short).join(', ') || 'none'}.
         </p>

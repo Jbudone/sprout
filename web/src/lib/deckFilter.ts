@@ -68,9 +68,16 @@ export function shuffleSeed(): string {
   }
 }
 
+const DOMAIN_LABELS: Record<string, string> = {
+  'history-geography': 'History & Geography',
+};
+
 export function domainLabel(domain: string): string {
-  return domain
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+  return (
+    DOMAIN_LABELS[domain] ??
+    domain
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  );
 }
