@@ -18,6 +18,7 @@ import {
 } from './lib/api';
 import { domainLabel } from './lib/deckFilter';
 import Latex from './lib/Latex.svelte';
+import { seededShuffle } from './lib/shuffle';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
 
 const REJECT_REASONS = [
@@ -67,6 +68,37 @@ let selectedId = $state<string | null>(null);
 let run = $state<Run | null>(null);
 let cards = $state<PendingCard[]>([]);
 let rejecting = $state<string | null>(null);
+
+// Spoiler-free mode: cards show shuffled options to try, and the answer,
+// explanation and reviewer notes stay hidden until you answer or reveal.
+let spoilerFree = $state(loadSpoilerFree());
+let revealed = $state<Record<string, boolean>>({});
+let chosen = $state<Record<string, string>>({});
+
+function loadSpoilerFree() {
+  try {
+    return localStorage.getItem('sprout-create-spoiler-free') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setSpoilerFree(on: boolean) {
+  spoilerFree = on;
+  try {
+    localStorage.setItem('sprout-create-spoiler-free', on ? '1' : '0');
+  } catch {
+    // Storage unavailable; the toggle just won't persist.
+  }
+}
+
+const hidden = (id: string) => spoilerFree && !revealed[id];
+
+function choose(c: PendingCard, option: string) {
+  if (!hidden(c.id)) return;
+  chosen[c.id] = option;
+  revealed[c.id] = true;
+}
 let actionError = $state<string | null>(null);
 
 const generatorModel = $derived(
@@ -393,6 +425,15 @@ function toggleReviewer(id: string) {
         </p>
       </div>
 
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={spoilerFree}
+          onchange={(e) => setSpoilerFree(e.currentTarget.checked)}
+        />
+        Spoiler-free: let me try the cards first
+      </label>
+
       {#if pendingCount > 0}
         <button
           type="button"
@@ -417,18 +458,64 @@ function toggleReviewer(id: string) {
 
           <TriviaQuestion segments={c.card.question} />
 
-          <ul class="flex flex-col gap-1 text-sm">
-            <li class="rounded-lg border border-green-500 bg-green-100 px-3 py-1 dark:bg-green-900">
-              <Latex text={c.card.correctAnswer} />
-            </li>
-            {#each c.card.distractors as d (d)}
-              <li class="rounded-lg border border-gray-200 px-3 py-1 text-gray-500 dark:border-gray-700">
-                <Latex text={d} />
-              </li>
-            {/each}
-          </ul>
+          {#if hidden(c.id)}
+            <div class="flex flex-col gap-1 text-sm">
+              {#each seededShuffle([c.card.correctAnswer, ...c.card.distractors], c.id) as option (option)}
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-left dark:border-gray-600"
+                  onclick={() => choose(c, option)}
+                >
+                  <Latex text={option} />
+                </button>
+              {/each}
+            </div>
+            <button
+              type="button"
+              class="self-center text-xs text-gray-400 underline"
+              onclick={() => (revealed[c.id] = true)}>Reveal answer</button
+            >
+          {:else}
+            <ul class="flex flex-col gap-1 text-sm">
+              {#each seededShuffle([c.card.correctAnswer, ...c.card.distractors], c.id) as option (option)}
+                {@const isCorrect = option === c.card.correctAnswer}
+                {@const isChosen = chosen[c.id] === option}
+                <li
+                  class="rounded-lg border px-3 py-1 {isCorrect
+                    ? 'border-green-500 bg-green-100 dark:bg-green-900'
+                    : isChosen
+                      ? 'border-red-500 bg-red-100 dark:bg-red-900'
+                      : 'border-gray-200 text-gray-500 dark:border-gray-700'}"
+                >
+                  <Latex text={option} />
+                </li>
+              {/each}
+            </ul>
+            {#if chosen[c.id]}
+              <p
+                class="text-sm font-semibold {chosen[c.id] === c.card.correctAnswer
+                  ? 'text-green-700'
+                  : 'text-red-700'}"
+              >
+                {chosen[c.id] === c.card.correctAnswer ? 'You got it!' : 'Not quite.'}
+              </p>
+            {/if}
+            {#if c.card.acceptableAlternatives.length > 0}
+              <p class="text-xs text-gray-400">
+                Also accepted: {c.card.acceptableAlternatives.join(' · ')}
+              </p>
+            {/if}
+            <p class="text-sm text-gray-600 dark:text-gray-300"><Latex text={c.card.explanation} /></p>
+          {/if}
 
-          <p class="text-sm text-gray-600 dark:text-gray-300"><Latex text={c.card.explanation} /></p>
+          <details class="rounded-xl border border-gray-200 p-2 text-sm dark:border-gray-700">
+            <summary class="cursor-pointer text-gray-500 dark:text-gray-400">Hints</summary>
+            <ol class="mt-2 flex list-decimal flex-col gap-1 pl-5">
+              {#each c.card.hints as hint (hint)}
+                <li><Latex text={hint} /></li>
+              {/each}
+            </ol>
+          </details>
 
           <p class="text-xs text-gray-400">
             {c.attempts} attempt{c.attempts === 1 ? '' : 's'}
@@ -437,10 +524,12 @@ function toggleReviewer(id: string) {
             {/each}
           </p>
 
-          {#if c.issues.length > 0}
+          {#if !hidden(c.id) && c.issues.length > 0}
             <ul class="list-disc pl-5 text-xs text-red-600">
               {#each c.issues as issue (issue)}<li>{issue}</li>{/each}
             </ul>
+          {:else if c.issues.length > 0}
+            <p class="text-xs text-gray-400">Reviewer notes hidden until you answer or reveal.</p>
           {/if}
           {#if c.rejectReason}<p class="text-xs text-gray-500">Rejected: {c.rejectReason}</p>{/if}
 
