@@ -4,7 +4,7 @@ title: ELO-adaptive difficulty for math/trivia content
 status: integrated
 created: 2026-09-07
 branch: idea/elo-adaptive-difficulty
-worktreePath: /home/jbud/sandboxes/elo-adaptive-difficulty
+worktreePath: 
 ---
 
 Track a per-domain (math) and per-category (trivia) ELO rating driven by real user answer/performance data, then have the content-creation workflow request problems/cards calibrated to the requesting user's current rating band instead of a fixed tier/eloRating. Blocked on having an actual answer-tracking/scoring system to feed it real signal — building the ELO math without real performance data would just be inventing a number. Raised during the content-creation quality-judge discussion (2026-09-07).
