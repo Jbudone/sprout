@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
-import { TriviaCardSchema, type TriviaCard } from '../schemas/quiz';
+import { MathProblemSchema, type MathProblem, TriviaCardSchema, type TriviaCard } from '../schemas/quiz';
 import { getRepoRoot } from '../utils/repo-root';
 import { CATEGORY_DEFAULT_DOMAIN, titleCase } from './decks';
 import { type Db, insertIgnoreSql, openDb, types } from './sql';
 
 // Trivia decks and cards live in their own SQLite file, separate from
 // quiz.db (progress/feedback), so "Reset progress" or deleting quiz.db can
-// never delete content. Math problems are still JSON files under content/math.
+// never delete content. Math problems live here too (math_problems).
 let clientPromise: Promise<Db> | null = null;
 
 export type Deck = {
@@ -75,7 +75,17 @@ export async function getContentClient(): Promise<Db> {
             : 'CREATE INDEX IF NOT EXISTS idx_trivia_cards_deck ON trivia_cards(deck_id, position)',
         );
       }
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS math_problems (
+          id ${t.key} PRIMARY KEY,
+          week_number INTEGER NOT NULL,
+          idx INTEGER NOT NULL,
+          data ${t.long} NOT NULL,
+          created_at ${t.key} NOT NULL
+        )
+      `);
       await seedFromLegacyFiles(client);
+      await seedMathFromLegacyFiles(client);
       return client;
     })();
   }
@@ -104,6 +114,43 @@ async function seedFromLegacyFiles(client: Db): Promise<void> {
       domain: CATEGORY_DEFAULT_DOMAIN[card.category],
     });
   }
+}
+
+// Same one-time migration for math: content/math/week-N-M.json become rows.
+async function seedMathFromLegacyFiles(client: Db): Promise<void> {
+  const existing = await client.execute('SELECT COUNT(*) AS n FROM math_problems');
+  if (Number(existing.rows[0].n) > 0) return;
+
+  const dir = path.join(await getRepoRoot(), 'content', 'math');
+  const names = (await readdir(dir).catch(() => [] as string[]))
+    .map(name => ({ name, m: name.match(/^week-(\d+)-(\d+)\.json$/) }))
+    .filter((f): f is { name: string; m: RegExpMatchArray } => f.m !== null)
+    .sort((a, b) => Number(a.m[1]) - Number(b.m[1]) || Number(a.m[2]) - Number(b.m[2]));
+
+  for (const { name, m } of names) {
+    const problem = MathProblemSchema.parse(JSON.parse(await readFile(path.join(dir, name), 'utf-8')));
+    await client.execute({
+      sql: 'INSERT INTO math_problems (id, week_number, idx, data, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [problem.id, problem.weekNumber, Number(m[2]), JSON.stringify(problem), new Date().toISOString()],
+    });
+  }
+}
+
+export async function listMathEntries(): Promise<MathProblem[]> {
+  const client = await getContentClient();
+  const result = await client.execute('SELECT data FROM math_problems ORDER BY week_number, idx');
+  return result.rows.map(row => MathProblemSchema.parse(JSON.parse(row.data as string)));
+}
+
+/** Adds a math problem; throws if its id already exists so a workflow can't overwrite content. */
+export async function addMathProblem(problem: MathProblem, idx: number): Promise<void> {
+  const client = await getContentClient();
+  const dup = await client.execute({ sql: 'SELECT 1 FROM math_problems WHERE id = ?', args: [problem.id] });
+  if (dup.rows.length > 0) throw new Error(`A math problem with id "${problem.id}" already exists.`);
+  await client.execute({
+    sql: 'INSERT INTO math_problems (id, week_number, idx, data, created_at) VALUES (?, ?, ?, ?, ?)',
+    args: [problem.id, problem.weekNumber, idx, JSON.stringify(problem), new Date().toISOString()],
+  });
 }
 
 async function insertCard(

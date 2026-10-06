@@ -6,7 +6,7 @@ import { type Db, openDb, upsertSql } from './sql';
 // the shared MySQL database.
 let clientPromise: Promise<Db> | null = null;
 
-async function getClient(): Promise<Db> {
+export async function getQuizClient(): Promise<Db> {
   if (!clientPromise) {
     clientPromise = (async () => {
       const client = await openDb('QUIZ_DB_FILE', 'quiz.db');
@@ -75,7 +75,7 @@ export type FeedbackRow = {
 };
 
 export async function getProgressForKind(kind: QuizKind): Promise<Map<string, ProgressRow>> {
-  const client = await getClient();
+  const client = await getQuizClient();
   const result = await client.execute({
     sql: 'SELECT * FROM quiz_progress WHERE kind = ?',
     args: [kind],
@@ -95,7 +95,7 @@ export async function getProgressForKind(kind: QuizKind): Promise<Map<string, Pr
 }
 
 export async function getFeedbackForKind(kind: QuizKind): Promise<Map<string, FeedbackRow>> {
-  const client = await getClient();
+  const client = await getQuizClient();
   const result = await client.execute({
     sql: 'SELECT * FROM quiz_feedback WHERE kind = ?',
     args: [kind],
@@ -121,7 +121,7 @@ export async function recordProgress(input: {
   chosenAnswer?: string;
   correct?: boolean;
 }): Promise<void> {
-  const client = await getClient();
+  const client = await getQuizClient();
   await client.execute({
     sql: upsertSql(client.dialect, 'quiz_progress', ['item_id'], ['item_id', 'kind', 'status', 'chosen_answer', 'correct', 'answered_at']),
     args: [
@@ -136,7 +136,7 @@ export async function recordProgress(input: {
 }
 
 export async function resetProgress(input: { kind?: QuizKind } = {}): Promise<void> {
-  const client = await getClient();
+  const client = await getQuizClient();
   if (input.kind) {
     await client.execute({ sql: 'DELETE FROM quiz_progress WHERE kind = ?', args: [input.kind] });
     await client.execute({ sql: 'DELETE FROM quiz_feedback WHERE kind = ?', args: [input.kind] });
@@ -153,7 +153,7 @@ export async function recordFeedback(input: {
   reaction?: Reaction | null;
   notes?: string | null;
 }): Promise<void> {
-  const client = await getClient();
+  const client = await getQuizClient();
   await client.execute({
     sql: upsertSql(client.dialect, 'quiz_feedback', ['item_id'], ['item_id', 'kind', 'difficulty', 'reaction', 'notes', 'updated_at']),
     args: [

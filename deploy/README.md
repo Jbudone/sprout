@@ -16,7 +16,7 @@ nothing but Caddy listens on the internet, and Caddy only forwards `/quiz/*`.
   dev workflows (feature-dev, idea-experiment). Only the quiz and content pipeline remain.
 - `MYSQL_URL` moves the app's tables (decks, cards, runs, usage log, progress, feedback)
   and Mastra's own storage into MySQL. Without it, local dev uses SQLite files as before.
-- On an empty database the first start seeds the 20 legacy trivia cards from the image.
+- On an empty database the first start seeds the starter trivia cards and math problems from the image.
 
 ## One-time setup
 
@@ -70,6 +70,20 @@ docker compose logs -f api
 ```
 Open `https://your-domain`, sign in, and check the Trivia tab shows the 20 starter cards.
 
+## Moving your existing content onto the droplet
+Everything (decks, cards, math, runs, usage log, your progress and feedback) travels as one JSON file.
+On your PC, with `npm run dev` running:
+```bash
+curl localhost:4111/quiz/admin/export -o sprout-export.json        # already gitignored
+```
+Then upload it to the droplet's site (it needs your login). Importing is safe to repeat: rows are
+upserted by id and nothing is deleted:
+```bash
+curl -u josh:YOUR_PASSWORD -X POST https://your-domain/quiz/admin/import \
+  -H 'content-type: application/json' --data-binary @sprout-export.json
+```
+The same two calls work in the other direction, so an export from the droplet also restores a PC.
+
 ## Day to day
 - **Update:** `cd /opt/sprout/deploy && docker compose pull && docker compose up -d`
 - **Roll back:** set `SPROUT_TAG=<commit sha tag>` in `.env` (tags are listed on the package page) and `docker compose up -d`
@@ -84,7 +98,6 @@ Open `https://your-domain`, sign in, and check the Trivia tab shows the 20 start
   `deploy/.env` on the droplet, never in the image.
 - **One login for everything.** Anyone with the password can start model runs that spend your balance.
   Use a long password and keep the caps low.
-- **Math problems** are still files baked into the image. New ones made on the server are lost when the
-  container is replaced; moving math into MySQL is a follow-up.
+- **Math problems** now live in MySQL like the trivia, so server-made content survives updates.
 - **DuckDB traces** (Mastra's observability) live on the `sprout-data` volume, not in MySQL.
 - **Studio** (the Mastra dev UI) is not part of the production image. Develop locally with `npm run dev`.

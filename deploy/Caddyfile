@@ -10,6 +10,18 @@
 
 	# Only the quiz routes reach the API. Its other endpoints (agents,
 	# workflows, Studio-style routes) are not reachable from outside.
+	# Export/import of the whole database can be large.
+	handle /quiz/admin/* {
+		request_body {
+			max_size 100MB
+		}
+		reverse_proxy api:4111 {
+			transport http {
+				read_timeout 5m
+			}
+		}
+	}
+
 	handle /quiz/* {
 		request_body {
 			max_size 1MB

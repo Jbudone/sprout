@@ -1,9 +1,15 @@
 name: Build and publish images
 
+# Every push to any branch publishes images. `latest` follows main only; every
+# build also gets a branch tag and a short-commit-sha tag. Docs-only pushes skip it.
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
+    paths-ignore:
+      - "**.md"
+      - "ideas/**"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
 
 permissions:
@@ -41,6 +47,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
             type=sha,format=short
             type=semver,pattern={{version}}
 

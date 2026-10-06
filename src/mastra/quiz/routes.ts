@@ -4,6 +4,7 @@ import { MathProblemSchema, TriviaCardSchema } from '../schemas/quiz';
 import { getFeedbackForKind, getProgressForKind, recordFeedback, recordProgress, resetProgress } from './db';
 import { getMathProblemById, getTriviaCardById, listMathProblems } from './content';
 import { listDecks, listTriviaEntries } from './content-db';
+import { adminApiRoutes } from './admin-routes';
 import { createApiRoutes } from './create-routes';
 
 const KindParamSchema = z.object({ kind: z.enum(['math', 'trivia']) });
@@ -180,4 +181,4 @@ const resetQuizRoute = createRoute({
   },
 });
 
-export const quizApiRoutes = [...createApiRoutes, listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];
+export const quizApiRoutes = [...adminApiRoutes, ...createApiRoutes, listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];

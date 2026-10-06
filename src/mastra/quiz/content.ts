@@ -1,33 +1,12 @@
-import path from 'node:path';
-import { readdir, readFile } from 'node:fs/promises';
-import { MathProblemSchema, type MathProblem, type TriviaCard } from '../schemas/quiz';
-import { getRepoRoot } from '../utils/repo-root';
-import { listTriviaEntries } from './content-db';
+import type { MathProblem, TriviaCard } from '../schemas/quiz';
+import { listMathEntries, listTriviaEntries } from './content-db';
 
-const FILENAME_PATTERN = /^week-(\d+)-(\d+)\.json$/;
-
-async function listContentFiles(kind: 'math'): Promise<string[]> {
-  const dir = path.join(await getRepoRoot(), 'content', kind);
-  const files = await readdir(dir).catch(() => [] as string[]);
-
-  return files
-    .map(name => ({ name, match: name.match(FILENAME_PATTERN) }))
-    .filter((f): f is { name: string; match: RegExpMatchArray } => f.match !== null)
-    .sort((a, b) => {
-      const [, weekA, indexA] = a.match;
-      const [, weekB, indexB] = b.match;
-      return Number(weekA) - Number(weekB) || Number(indexA) - Number(indexB);
-    })
-    .map(f => path.join(dir, f.name));
-}
-
+// Both trivia decks and math problems live in the content database (see
+// content-db.ts); the old content/*.json files only seed an empty database.
 export async function listMathProblems(): Promise<MathProblem[]> {
-  const files = await listContentFiles('math');
-  return Promise.all(files.map(async f => MathProblemSchema.parse(JSON.parse(await readFile(f, 'utf-8')))));
+  return listMathEntries();
 }
 
-// Trivia lives in content.db as decks of cards (see content-db.ts); math is
-// still one JSON file per problem.
 export async function listTriviaCards(): Promise<TriviaCard[]> {
   return (await listTriviaEntries()).map(e => e.card);
 }

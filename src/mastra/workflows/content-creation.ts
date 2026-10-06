@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { noopObserve } from '@mastra/core/tools';
 import { z } from 'zod';
@@ -14,13 +14,9 @@ import { verifyMathTool } from '../tools/verify-math';
 import { verifyTriviaTool } from '../tools/verify-trivia';
 import { getRepoRoot } from '../utils/repo-root';
 import { listMathProblems, listTriviaCards, pickLeastUsed } from '../quiz/content';
-import { addTriviaCard, defaultDeckForCard } from '../quiz/content-db';
+import { addMathProblem, addTriviaCard, defaultDeckForCard } from '../quiz/content-db';
 
 const MAX_CONTENT_ATTEMPTS = 3;
-
-async function getContentRoot(): Promise<string> {
-  return path.join(await getRepoRoot(), 'content');
-}
 
 // Optional, user-curated examples of the quality bar and topic breadth to
 // aim for. Absent by default — generation proceeds unchanged without it.
@@ -209,20 +205,21 @@ const mathItemWorkflow = createWorkflow({
 
 const persistMathStep = createStep({
   id: 'persist-math',
-  description: 'Writes verified math problems to the content library; leaves unverified ones unwritten.',
+  description: 'Adds verified math problems to the content database; leaves unverified ones unwritten.',
   inputSchema: z.array(MathCycleSchema),
   outputSchema: BatchResultSchema,
   execute: async ({ inputData }) => {
     const written: string[] = [];
     const failed: { index: number; issues: string[] }[] = [];
 
-    const mathRoot = path.join(await getContentRoot(), 'math');
-    await mkdir(mathRoot, { recursive: true });
     for (const item of inputData) {
       if (item.verified && item.problem) {
-        const filePath = path.join(mathRoot, `week-${item.weekNumber}-${item.index}.json`);
-        await writeFile(filePath, JSON.stringify(item.problem, null, 2));
-        written.push(filePath);
+        try {
+          await addMathProblem(item.problem, item.index);
+          written.push(`math:${item.problem.id}`);
+        } catch (e) {
+          failed.push({ index: item.index, issues: [e instanceof Error ? e.message : String(e)] });
+        }
       } else {
         failed.push({ index: item.index, issues: item.issues });
       }
