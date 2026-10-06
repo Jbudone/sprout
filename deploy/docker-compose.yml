@@ -24,9 +24,11 @@ services:
       SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:?set BASIC_AUTH_USER in .env}
       BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?set BASIC_AUTH_HASH in .env}
+    # Defaults are the standard web ports. If another proxy on the host already
+    # owns 80/443, set HTTP_PORT/HTTPS_PORT (e.g. 8080/8443) and put that proxy in front.
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - caddy-data:/data
       - caddy-config:/config
