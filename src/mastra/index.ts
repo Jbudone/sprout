@@ -1,6 +1,7 @@
 import { Mastra } from '@mastra/core/mastra';
 import { LibSQLStore } from '@mastra/libsql';
 import { DuckDBStore } from '@mastra/duckdb';
+import { MySQLStore } from '@mastra/mysql';
 import { MastraCompositeStore } from '@mastra/core/storage';
 import {
   MastraStorageExporter,
@@ -29,6 +30,11 @@ import { contentAuthorWorkflow } from './workflows/content-author';
 import { eloUpdateWorkflow } from './workflows/elo-update';
 import { quizApiRoutes } from './quiz/routes';
 
+// On the droplet (SPROUT_ENV=production) only the quiz and content pipeline
+// are registered: the shell-capable general agent and the git-worktree dev
+// workflows have no business on a server and are left out.
+const production = process.env.SPROUT_ENV === 'production';
+
 export const mastra = new Mastra({
   bundler: {
     externals: ['@duckdb/node-bindings'],
@@ -37,32 +43,44 @@ export const mastra = new Mastra({
     apiRoutes: quizApiRoutes,
   },
   agents: {
-    agent,
-    architect: architectAgent,
-    builder: builderAgent,
-    experimenter: experimenterAgent,
-    reviewer: reviewerAgent,
+    ...(production
+      ? {}
+      : {
+          agent,
+          architect: architectAgent,
+          builder: builderAgent,
+          experimenter: experimenterAgent,
+          reviewer: reviewerAgent,
+        }),
     mathCurator: mathCuratorAgent,
     contentQuality: contentQualityAgent,
     contentAuthor: contentAuthorAgent,
   },
-  tools: { startScheduleTool, stopScheduleTool, worktreeTool, verifyMathTool, verifyTriviaTool, ideasTool, contentLibraryTool },
+  tools: { ...(production ? {} : { startScheduleTool, stopScheduleTool, worktreeTool }), verifyMathTool, verifyTriviaTool, ideasTool, contentLibraryTool },
   workflows: {
-    featureDev: featureDevWorkflow,
+    ...(production ? {} : { featureDev: featureDevWorkflow, ideaExperiment: ideaExperimentWorkflow }),
     contentCreation: contentCreationWorkflow,
-    ideaExperiment: ideaExperimentWorkflow,
     contentAuthor: contentAuthorWorkflow,
     eloUpdate: eloUpdateWorkflow,
   },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
-    default: new LibSQLStore({
-      id: 'mastra-storage',
-      url: process.env.TURSO_DATABASE_URL || 'file:./mastra.db',
-      authToken: process.env.TURSO_AUTH_TOKEN || undefined,
-    }),
+    // MYSQL_URL (the droplet) puts Mastra's own memory/workflow state in MySQL
+    // alongside the app tables; otherwise a local SQLite file or Turso.
+    default: process.env.MYSQL_URL
+      ? new MySQLStore({
+          id: 'mastra-mysql',
+          connectionString: process.env.MYSQL_URL,
+          ssl: process.env.MYSQL_SSL === 'true' ? true : undefined,
+        })
+      : new LibSQLStore({
+          id: 'mastra-storage',
+          url: process.env.TURSO_DATABASE_URL || 'file:./mastra.db',
+          authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+        }),
     domains: {
-      observability: await new DuckDBStore().getStore('observability'),
+      // DUCKDB_PATH lets the container keep traces on a mounted volume.
+      observability: await new DuckDBStore(process.env.DUCKDB_PATH ? { path: process.env.DUCKDB_PATH } : undefined).getStore('observability'),
     },
   }),
   observability: new Observability({

@@ -14,9 +14,15 @@ const execFileAsync = promisify(execFile);
 // working directory" and every /quiz route 500s. Both src/mastra/utils/ and
 // .mastra/output/ are inside the repo, so either resolves to the same root.
 // Resolved once at module load so it's only paid once.
-const repoRoot = execFileAsync('git', ['rev-parse', '--show-toplevel'], { cwd: import.meta.dirname }).then(({ stdout }) => stdout.trim());
-// Avoid an unhandled rejection if nothing awaits it before it fails.
-repoRoot.catch(() => {});
+//
+// In a container there is no git checkout: SPROUT_ROOT names the app directory
+// (holding content/ and reference/), and as a last resort the process's own
+// working directory is used.
+const repoRoot: Promise<string> = process.env.SPROUT_ROOT
+  ? Promise.resolve(process.env.SPROUT_ROOT)
+  : execFileAsync('git', ['rev-parse', '--show-toplevel'], { cwd: import.meta.dirname })
+      .then(({ stdout }) => stdout.trim())
+      .catch(() => process.cwd());
 
 export function getRepoRoot(): Promise<string> {
   return repoRoot;

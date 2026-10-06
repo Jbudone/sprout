@@ -1,0 +1,37 @@
+# Runs on the droplet. Copy this folder to the server, create deploy/.env from
+# .env.example, then: docker compose pull && docker compose up -d
+services:
+  api:
+    image: ghcr.io/jbudone/sprout:${SPROUT_TAG:-latest}
+    restart: unless-stopped
+    # Each container gets only what it needs: the API never sees the login hash,
+    # and Caddy never sees the database password or model keys.
+    environment:
+      SPROUT_ENV: production
+      MYSQL_URL: ${MYSQL_URL:?set MYSQL_URL in .env}
+      MYSQL_SSL: ${MYSQL_SSL:-false}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - sprout-data:/data
+    # No published ports: only Caddy, on the internal network, can reach the API.
+
+  web:
+    image: ghcr.io/jbudone/sprout-web:${SPROUT_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?set BASIC_AUTH_USER in .env}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?set BASIC_AUTH_HASH in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  sprout-data:
+  caddy-data:
+  caddy-config:

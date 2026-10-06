@@ -18,16 +18,18 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
-    "@mastra/core": "1.64.0",
-    "@mastra/duckdb": "1.6.4",
-    "@mastra/libsql": "1.22.3",
-    "@mastra/memory": "1.28.2",
-    "@mastra/observability": "1.17.5",
+    "@mastra/core": "1.74.0",
+    "@mastra/duckdb": "1.12.1",
+    "@mastra/libsql": "1.25.0",
+    "@mastra/memory": "1.35.0",
+    "@mastra/mysql": "0.12.0",
+    "@mastra/observability": "1.18.3",
+    "mysql2": "3.24.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "latest",
-    "mastra": "1.27.3",
+    "mastra": "1.32.1",
     "typescript": "^6.0.3"
   }
 }

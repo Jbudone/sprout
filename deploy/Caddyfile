@@ -1,0 +1,31 @@
+# SITE_ADDRESS is your domain (Caddy gets a Let's Encrypt certificate for it
+# automatically); use ":80" for a local test without HTTPS.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# Everything, including the static app, sits behind one login.
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	# Only the quiz routes reach the API. Its other endpoints (agents,
+	# workflows, Studio-style routes) are not reachable from outside.
+	handle /quiz/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:4111
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+}

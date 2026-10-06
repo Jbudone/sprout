@@ -1,7 +1,7 @@
-import type { Client } from '@libsql/client';
 import { z } from 'zod';
 import { TriviaCardSchema, type TriviaCard } from '../schemas/quiz';
 import { getContentClient, type Provenance } from './content-db';
+import { type Db, types, upsertSql } from './sql';
 
 // Tables for the Create tab, in content.db next to the decks: generation
 // runs, the cards each run produced (pending until you decide), and a log of
@@ -50,58 +50,58 @@ export type PendingCard = {
   createdAt: string;
 };
 
-let ready: Promise<Client> | null = null;
+let ready: Promise<Db> | null = null;
 
-async function db(): Promise<Client> {
+async function db(): Promise<Db> {
   if (!ready) {
     ready = (async () => {
       const client = await getContentClient();
+      const t = types(client.dialect);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS gen_runs (
-          id TEXT PRIMARY KEY,
-          brief TEXT NOT NULL,
-          config TEXT NOT NULL,
-          status TEXT NOT NULL,
+          id ${t.key} PRIMARY KEY,
+          brief ${t.long} NOT NULL,
+          config ${t.long} NOT NULL,
+          status ${t.key} NOT NULL,
           error TEXT,
-          created_at TEXT NOT NULL,
-          finished_at TEXT
+          created_at ${t.key} NOT NULL,
+          finished_at ${t.key}
         )
       `);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS pending_cards (
-          id TEXT PRIMARY KEY,
-          run_id TEXT NOT NULL REFERENCES gen_runs(id),
-          data TEXT NOT NULL,
-          status TEXT NOT NULL,
+          id ${t.key} PRIMARY KEY,
+          run_id ${t.key} NOT NULL,
+          data ${t.long} NOT NULL,
+          status ${t.key} NOT NULL,
           reject_reason TEXT,
           attempts INTEGER NOT NULL,
-          reviewers TEXT NOT NULL,
-          issues TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          decided_at TEXT
+          reviewers ${t.long} NOT NULL,
+          issues ${t.long} NOT NULL,
+          created_at ${t.key} NOT NULL,
+          decided_at ${t.key}
         )
       `);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS model_calls (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          run_id TEXT,
-          card_id TEXT,
-          role TEXT NOT NULL,
-          model TEXT NOT NULL,
+          id ${t.autoId},
+          run_id ${t.key},
+          card_id ${t.key},
+          role ${t.key} NOT NULL,
+          model ${t.key} NOT NULL,
           input_tokens INTEGER,
           output_tokens INTEGER,
-          cost REAL,
+          cost DOUBLE,
           latency_ms INTEGER NOT NULL,
           ok INTEGER NOT NULL,
           error TEXT,
-          created_at TEXT NOT NULL
+          created_at ${t.key} NOT NULL
         )
       `);
-      const callCols = await client.execute('PRAGMA table_info(model_calls)');
-      if (!callCols.rows.some(r => r.name === 'cost_estimated')) {
+      if (!(await client.columns('model_calls')).includes('cost_estimated')) {
         await client.execute('ALTER TABLE model_calls ADD COLUMN cost_estimated INTEGER');
       }
-      await client.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+      await client.execute(`CREATE TABLE IF NOT EXISTS settings (\`key\` ${t.key} PRIMARY KEY, \`value\` TEXT NOT NULL)`);
       // A server restart mid-run leaves a run 'running' forever; mark it failed.
       await client.execute({
         sql: "UPDATE gen_runs SET status = 'failed', error = ?, finished_at = ? WHERE status = 'running'",
@@ -287,7 +287,7 @@ const DEFAULT_SETTINGS: Settings = { perRunCapUsd: 1, monthlyCapUsd: 5 };
 
 export async function getSettings(): Promise<Settings> {
   const client = await db();
-  const r = await client.execute('SELECT key, value FROM settings');
+  const r = await client.execute('SELECT `key`, `value` FROM settings');
   const stored = Object.fromEntries(r.rows.map(row => [row.key as string, Number(row.value)]));
   return {
     perRunCapUsd: stored.perRunCapUsd > 0 ? stored.perRunCapUsd : DEFAULT_SETTINGS.perRunCapUsd,
@@ -298,10 +298,7 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
   const client = await db();
   for (const [key, value] of Object.entries(settings)) {
-    await client.execute({
-      sql: 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-      args: [key, String(value)],
-    });
+    await client.execute({ sql: upsertSql(client.dialect, 'settings', ['key'], ['key', 'value']), args: [key, String(value)] });
   }
 }
 
@@ -334,7 +331,7 @@ export async function getObservedTokens(model: string, role: 'generator' | 'revi
     sql: `SELECT AVG(input_tokens) AS i, AVG(output_tokens) AS o, COUNT(*) AS n FROM
             (SELECT input_tokens, output_tokens FROM model_calls
              WHERE model = ? AND role = ? AND ok = 1 AND input_tokens IS NOT NULL AND output_tokens IS NOT NULL
-             ORDER BY id DESC LIMIT 50)`,
+             ORDER BY id DESC LIMIT 50) AS recent`,
     args: [model, role],
   });
   const row = r.rows[0];

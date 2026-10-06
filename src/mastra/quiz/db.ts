@@ -1,50 +1,48 @@
-import path from 'node:path';
-import { createClient, type Client } from '@libsql/client';
-import { getRepoRoot } from '../utils/repo-root';
+import { type Db, openDb, upsertSql } from './sql';
 
-// A separate SQLite file from mastra.db (Mastra's own memory/trace/schedule
-// storage) so this app-owned schema never collides with framework-managed
-// tables or migrations.
-let clientPromise: Promise<Client> | null = null;
+// Progress and feedback live apart from content (see content-db.ts) so that
+// resetting progress can never touch decks or cards. On SQLite this is its own
+// file (QUIZ_DB_FILE, default quiz.db); with MYSQL_URL set it is two tables in
+// the shared MySQL database.
+let clientPromise: Promise<Db> | null = null;
 
-async function getClient(): Promise<Client> {
+async function getClient(): Promise<Db> {
   if (!clientPromise) {
     clientPromise = (async () => {
-      const dbFileName = process.env.QUIZ_DB_FILE || 'quiz.db';
-      const dbPath = path.join(await getRepoRoot(), dbFileName);
-      const client = createClient({ url: `file:${dbPath}` });
+      const client = await openDb('QUIZ_DB_FILE', 'quiz.db');
+      const key = client.dialect === 'mysql' ? 'VARCHAR(191)' : 'TEXT';
       await client.execute(`
         CREATE TABLE IF NOT EXISTS quiz_progress (
-          item_id TEXT PRIMARY KEY,
-          kind TEXT NOT NULL,
-          status TEXT NOT NULL,
+          item_id ${key} PRIMARY KEY,
+          kind ${key} NOT NULL,
+          status ${key} NOT NULL,
           chosen_answer TEXT,
           correct INTEGER,
-          answered_at TEXT NOT NULL
+          answered_at ${key} NOT NULL
         )
       `);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS quiz_feedback (
-          item_id TEXT PRIMARY KEY,
-          kind TEXT NOT NULL,
-          difficulty TEXT,
-          reaction TEXT,
+          item_id ${key} PRIMARY KEY,
+          kind ${key} NOT NULL,
+          difficulty ${key},
+          reaction ${key},
           notes TEXT,
-          updated_at TEXT NOT NULL
+          updated_at ${key} NOT NULL
         )
       `);
-      // Migrate the older not_fun boolean column (pre-dates the "standout"
-      // positive-feedback option) into the new not_fun/standout reaction field.
-      const columns = await client.execute('PRAGMA table_info(quiz_feedback)');
-      const hasNotFun = columns.rows.some(row => row.name === 'not_fun');
-      if (hasNotFun) {
-        const hasReaction = columns.rows.some(row => row.name === 'reaction');
-        if (!hasReaction) await client.execute('ALTER TABLE quiz_feedback ADD COLUMN reaction TEXT');
-        await client.execute("UPDATE quiz_feedback SET reaction = 'not_fun' WHERE not_fun = 1 AND reaction IS NULL");
-        try {
-          await client.execute('ALTER TABLE quiz_feedback DROP COLUMN not_fun');
-        } catch {
-          // Older SQLite without DROP COLUMN support — a harmless unused column.
+      // SQLite only: migrate the older not_fun boolean column (pre-dates the
+      // "standout" positive-feedback option) into the not_fun/standout reaction field.
+      if (client.dialect === 'sqlite') {
+        const columns = await client.columns('quiz_feedback');
+        if (columns.includes('not_fun')) {
+          if (!columns.includes('reaction')) await client.execute('ALTER TABLE quiz_feedback ADD COLUMN reaction TEXT');
+          await client.execute("UPDATE quiz_feedback SET reaction = 'not_fun' WHERE not_fun = 1 AND reaction IS NULL");
+          try {
+            await client.execute('ALTER TABLE quiz_feedback DROP COLUMN not_fun');
+          } catch {
+            // Older SQLite without DROP COLUMN support — a harmless unused column.
+          }
         }
       }
       return client;
@@ -125,15 +123,7 @@ export async function recordProgress(input: {
 }): Promise<void> {
   const client = await getClient();
   await client.execute({
-    sql: `
-      INSERT INTO quiz_progress (item_id, kind, status, chosen_answer, correct, answered_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(item_id) DO UPDATE SET
-        status = excluded.status,
-        chosen_answer = excluded.chosen_answer,
-        correct = excluded.correct,
-        answered_at = excluded.answered_at
-    `,
+    sql: upsertSql(client.dialect, 'quiz_progress', ['item_id'], ['item_id', 'kind', 'status', 'chosen_answer', 'correct', 'answered_at']),
     args: [
       input.itemId,
       input.kind,
@@ -165,15 +155,7 @@ export async function recordFeedback(input: {
 }): Promise<void> {
   const client = await getClient();
   await client.execute({
-    sql: `
-      INSERT INTO quiz_feedback (item_id, kind, difficulty, reaction, notes, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(item_id) DO UPDATE SET
-        difficulty = excluded.difficulty,
-        reaction = excluded.reaction,
-        notes = excluded.notes,
-        updated_at = excluded.updated_at
-    `,
+    sql: upsertSql(client.dialect, 'quiz_feedback', ['item_id'], ['item_id', 'kind', 'difficulty', 'reaction', 'notes', 'updated_at']),
     args: [
       input.itemId,
       input.kind,

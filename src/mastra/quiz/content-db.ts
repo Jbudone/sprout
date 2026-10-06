@@ -1,14 +1,14 @@
 import path from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
-import { createClient, type Client } from '@libsql/client';
 import { TriviaCardSchema, type TriviaCard } from '../schemas/quiz';
 import { getRepoRoot } from '../utils/repo-root';
 import { CATEGORY_DEFAULT_DOMAIN, titleCase } from './decks';
+import { type Db, insertIgnoreSql, openDb, types } from './sql';
 
 // Trivia decks and cards live in their own SQLite file, separate from
 // quiz.db (progress/feedback), so "Reset progress" or deleting quiz.db can
 // never delete content. Math problems are still JSON files under content/math.
-let clientPromise: Promise<Client> | null = null;
+let clientPromise: Promise<Db> | null = null;
 
 export type Deck = {
   id: string;
@@ -36,36 +36,45 @@ export type TriviaEntry = {
   deck: { id: string; name: string; domain: string };
 };
 
-export async function getContentClient(): Promise<Client> {
+export async function getContentClient(): Promise<Db> {
   if (!clientPromise) {
     clientPromise = (async () => {
-      const dbFileName = process.env.CONTENT_DB_FILE || 'content.db';
-      const dbPath = path.join(await getRepoRoot(), dbFileName);
-      const client = createClient({ url: `file:${dbPath}` });
+      const client = await openDb('CONTENT_DB_FILE', 'content.db');
+      const t = types(client.dialect);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS decks (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          domain TEXT NOT NULL,
+          id ${t.key} PRIMARY KEY,
+          name ${t.key} NOT NULL,
+          domain ${t.key} NOT NULL,
           description TEXT,
-          created_at TEXT NOT NULL
+          created_at ${t.key} NOT NULL
         )
       `);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS trivia_cards (
-          id TEXT PRIMARY KEY,
-          deck_id TEXT NOT NULL REFERENCES decks(id),
+          id ${t.key} PRIMARY KEY,
+          deck_id ${t.key} NOT NULL,
           position INTEGER NOT NULL,
-          data TEXT NOT NULL,
-          created_at TEXT NOT NULL
+          data ${t.long} NOT NULL,
+          created_at ${t.key} NOT NULL
         )
       `);
       // Added after the first release; older files get the column here.
-      const cols = await client.execute('PRAGMA table_info(trivia_cards)');
-      if (!cols.rows.some(r => r.name === 'provenance')) {
-        await client.execute('ALTER TABLE trivia_cards ADD COLUMN provenance TEXT');
+      if (!(await client.columns('trivia_cards')).includes('provenance')) {
+        await client.execute(`ALTER TABLE trivia_cards ADD COLUMN provenance ${t.long}`);
       }
-      await client.execute('CREATE INDEX IF NOT EXISTS idx_trivia_cards_deck ON trivia_cards(deck_id, position)');
+      // MySQL has no CREATE INDEX IF NOT EXISTS, so check first.
+      const hasIndex =
+        client.dialect === 'mysql'
+          ? (await client.execute("SHOW INDEX FROM trivia_cards WHERE Key_name = 'idx_trivia_cards_deck'")).rows.length > 0
+          : false;
+      if (!hasIndex) {
+        await client.execute(
+          client.dialect === 'mysql'
+            ? 'CREATE INDEX idx_trivia_cards_deck ON trivia_cards(deck_id, position)'
+            : 'CREATE INDEX IF NOT EXISTS idx_trivia_cards_deck ON trivia_cards(deck_id, position)',
+        );
+      }
       await seedFromLegacyFiles(client);
       return client;
     })();
@@ -77,7 +86,7 @@ export async function getContentClient(): Promise<Client> {
 // one deck per category. Only runs while the table is empty, so it never
 // re-imports after cards have been added, edited, or deleted. The JSON files
 // are left in place as a backup.
-async function seedFromLegacyFiles(client: Client): Promise<void> {
+async function seedFromLegacyFiles(client: Db): Promise<void> {
   const existing = await client.execute('SELECT COUNT(*) AS n FROM trivia_cards');
   if (Number(existing.rows[0].n) > 0) return;
 
@@ -98,14 +107,14 @@ async function seedFromLegacyFiles(client: Client): Promise<void> {
 }
 
 async function insertCard(
-  client: Client,
+  client: Db,
   card: TriviaCard,
   deck: { id: string; name: string; domain: string; description?: string },
   provenance: Provenance | null = null,
 ): Promise<void> {
   const now = new Date().toISOString();
   await client.execute({
-    sql: 'INSERT OR IGNORE INTO decks (id, name, domain, description, created_at) VALUES (?, ?, ?, ?, ?)',
+    sql: insertIgnoreSql(client.dialect, 'decks', ['id', 'name', 'domain', 'description', 'created_at']),
     args: [deck.id, deck.name, deck.domain, deck.description ?? null, now],
   });
   const pos = await client.execute({
