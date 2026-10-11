@@ -2,6 +2,7 @@
 import CreateView from './CreateView.svelte';
 import HowItWorksView from './HowItWorksView.svelte';
 import { resetProgress } from './lib/api';
+import { loadTheme, saveTheme, THEMES, type ThemeId } from './lib/theme';
 import MathView from './MathView.svelte';
 import StatsView from './StatsView.svelte';
 import TriviaReviewView from './TriviaReviewView.svelte';
@@ -10,6 +11,7 @@ import TriviaView from './TriviaView.svelte';
 let tab = $state<'math' | 'trivia' | 'review' | 'create' | 'stats' | 'how'>(
   'trivia',
 );
+let theme = $state<ThemeId>(loadTheme());
 let confirmingReset = $state(false);
 let confirmTimeout: ReturnType<typeof setTimeout> | undefined;
 // Bumped on reset so {#key} below remounts both views, forcing a fresh fetch.
@@ -31,8 +33,8 @@ async function handleResetClick() {
 }
 </script>
 
-<div class="min-h-svh bg-white pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] dark:bg-gray-900 dark:text-gray-100">
-  <nav class="sticky top-0 z-10 flex items-center relative overflow-x-auto border-b border-gray-200 bg-white/90 pr-24 backdrop-blur dark:border-gray-700 dark:bg-gray-900/90">
+<div class="min-h-svh bg-[var(--page)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-[var(--ink)]">
+  <nav class="sticky top-0 z-10 flex items-center relative overflow-x-auto border-b border-gray-200 bg-white/90 pr-44 backdrop-blur dark:border-gray-700 dark:bg-gray-900/90">
     <button
       type="button"
       class="flex-1 whitespace-nowrap px-2 py-3 text-center text-sm font-medium sm:text-base"
@@ -93,14 +95,24 @@ async function handleResetClick() {
     >
       How it works
     </button>
-    <button
-      type="button"
-      class="absolute right-2 text-xs text-gray-400 underline"
-      class:text-red-600={confirmingReset}
-      onclick={handleResetClick}
-    >
-      {confirmingReset ? 'Confirm reset?' : 'Reset progress'}
-    </button>
+    <div class="absolute right-2 flex items-center gap-2">
+      <select
+        class="rounded border border-gray-300 bg-transparent px-1 py-0.5 text-xs dark:border-gray-600"
+        aria-label="Theme"
+        bind:value={theme}
+        onchange={() => saveTheme(theme)}
+      >
+        {#each THEMES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
+      </select>
+      <button
+        type="button"
+        class="text-xs text-gray-400 underline"
+        class:text-red-600={confirmingReset}
+        onclick={handleResetClick}
+      >
+        {confirmingReset ? 'Confirm reset?' : 'Reset'}
+      </button>
+    </div>
   </nav>
 
   {#key generation}

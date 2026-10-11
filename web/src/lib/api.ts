@@ -40,6 +40,10 @@ export type Feedback = {
   difficulty: Difficulty | null;
   reaction: Reaction | null;
   notes: string | null;
+  // Flagged parts of the card ('question', 'explanation', 'hints', 'hint:1',
+  // 'option:<text>') and the reason chip ids that explain them.
+  targets: string[];
+  reasons: string[];
 };
 
 export type QuizStatus = 'unanswered' | 'answered' | 'skipped';
@@ -148,6 +152,23 @@ export function sendFeedback(
     method: 'POST',
     body: JSON.stringify(feedback),
   });
+}
+
+export type IgnoreRule = { id: number; rule: string; createdAt: string };
+
+export function listIgnoreRules(): Promise<{ rules: IgnoreRule[] }> {
+  return request('/create/ignore-rules');
+}
+
+export function addIgnoreRule(rule: string): Promise<{ rules: IgnoreRule[] }> {
+  return request('/create/ignore-rules', {
+    method: 'POST',
+    body: JSON.stringify({ rule }),
+  });
+}
+
+export function deleteIgnoreRule(id: number): Promise<{ rules: IgnoreRule[] }> {
+  return request(`/create/ignore-rules/${id}/delete`, { method: 'POST' });
 }
 
 export function resetProgress(kind?: Kind): Promise<{ success: boolean }> {

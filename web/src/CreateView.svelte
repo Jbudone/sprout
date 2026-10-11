@@ -1,11 +1,15 @@
 <script lang="ts">
 import {
+  addIgnoreRule,
   approveAll,
   approveCard,
   type Brief,
   type CardStatus,
   type Deck,
+  deleteIgnoreRule,
   type Estimate,
+  type IgnoreRule,
+  listIgnoreRules,
   estimateRun,
   getRun,
   listDecks,
@@ -44,6 +48,36 @@ const SUGGESTED_DOMAINS = [
   'general',
 ];
 const CUSTOM = '__custom__';
+
+// ---- reviewer ignore rules ----
+// An issue a reviewer raised that the owner doesn't care about becomes a rule
+// that is added to every reviewer's prompt on later runs.
+let ignoreRules = $state<IgnoreRule[]>([]);
+let ruleDraft = $state<{ cardId: string; text: string } | null>(null);
+let ruleError = $state<string | null>(null);
+
+$effect(() => {
+  listIgnoreRules()
+    .then((res) => {
+      ignoreRules = res.rules;
+    })
+    .catch(() => {});
+});
+
+async function saveRule() {
+  if (!ruleDraft || ruleDraft.text.trim().length < 3) return;
+  try {
+    ignoreRules = (await addIgnoreRule(ruleDraft.text.trim())).rules;
+    ruleDraft = null;
+    ruleError = null;
+  } catch (e) {
+    ruleError = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function removeRule(id: number) {
+  ignoreRules = (await deleteIgnoreRule(id)).rules;
+}
 
 // ---- form ----
 let briefText = $state('');
@@ -425,6 +459,21 @@ function toggleReviewer(id: string) {
     </button>
   </form>
 
+  {#if ignoreRules.length > 0}
+    <details class="rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700">
+      <summary class="cursor-pointer font-medium">Reviewer ignore rules ({ignoreRules.length})</summary>
+      <p class="mt-2 text-xs text-gray-500">Reviewers are told not to fail a card for any of these.</p>
+      <ul class="mt-2 flex flex-col gap-1">
+        {#each ignoreRules as r (r.id)}
+          <li class="flex items-start gap-2">
+            <span class="min-w-0 flex-1">{r.rule}</span>
+            <button type="button" class="shrink-0 text-xs text-gray-500 underline" onclick={() => removeRule(r.id)}>Remove</button>
+          </li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
+
   {#if runs.length > 0}
     <section class="flex flex-col gap-2">
       <h2 class="font-medium">Recent runs</h2>
@@ -566,9 +615,34 @@ function toggleReviewer(id: string) {
           </p>
 
           {#if !hidden(c.id) && c.issues.length > 0}
-            <ul class="list-disc pl-5 text-xs text-red-600">
-              {#each c.issues as issue (issue)}<li>{issue}</li>{/each}
+            <ul class="flex flex-col gap-1 text-xs text-red-600">
+              {#each c.issues as issue (issue)}
+                <li class="flex items-start gap-2">
+                  <span class="min-w-0 flex-1">• {issue}</span>
+                  <button
+                    type="button"
+                    class="shrink-0 rounded-full border border-gray-300 px-2 py-0.5 text-gray-600 dark:border-gray-600 dark:text-gray-300"
+                    title="Tell reviewers not to fail cards for this"
+                    onclick={() => (ruleDraft = { cardId: c.id, text: issue })}
+                  >
+                    🚩 Don't care
+                  </button>
+                </li>
+              {/each}
             </ul>
+            {#if ruleDraft && ruleDraft.cardId === c.id}
+              <div class="flex flex-col gap-2 rounded-xl border border-gray-300 p-2 text-xs dark:border-gray-600">
+                <label class="flex flex-col gap-1">
+                  Reviewers will stop raising this (edit to make it general):
+                  <textarea class="rounded-lg border p-2 dark:bg-gray-800" rows="2" bind:value={ruleDraft.text}></textarea>
+                </label>
+                {#if ruleError}<p class="text-red-600">{ruleError}</p>{/if}
+                <div class="flex gap-2">
+                  <button type="button" class="rounded-lg bg-blue-600 px-3 py-1 text-white" onclick={saveRule}>Save rule</button>
+                  <button type="button" class="text-gray-500 underline" onclick={() => (ruleDraft = null)}>Cancel</button>
+                </div>
+              </div>
+            {/if}
           {:else if c.issues.length > 0}
             <p class="text-xs text-gray-400">Reviewer notes hidden until you answer or reveal.</p>
           {/if}

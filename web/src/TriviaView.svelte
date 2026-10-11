@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import {
   answerQuiz,
   type Deck,
@@ -19,6 +20,10 @@ import {
   validFilter,
 } from './lib/deckFilter';
 import FeedbackControl from './lib/FeedbackControl.svelte';
+import { FeedbackState } from './lib/feedbackState.svelte';
+import { optionTarget } from './lib/feedbackReasons';
+import FlagToggle from './lib/FlagToggle.svelte';
+import HintLadder from './lib/HintLadder.svelte';
 import Latex from './lib/Latex.svelte';
 import Provenance from './lib/Provenance.svelte';
 import { seededShuffle } from './lib/shuffle';
@@ -135,9 +140,19 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       difficulty: feedback.difficulty ?? null,
       reaction: feedback.reaction ?? null,
       notes: feedback.notes ?? null,
+      targets: feedback.targets ?? [],
+      reasons: feedback.reasons ?? [],
     },
   });
 }
+
+// One feedback state per card, rebuilt only when the card changes (not on
+// every save) so typing and chip toggles aren't reset by their own save.
+let fb = $state<FeedbackState | null>(null);
+$effect(() => {
+  const id = current?.item.id;
+  fb = id ? untrack(() => new FeedbackState(current?.feedback ?? null, submitFeedback)) : null;
+});
 </script>
 
 <div class="mx-auto flex max-w-md flex-col gap-4 p-4" use:swipeNav={{ onSwipeRight: goBack }}>
@@ -173,7 +188,7 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         <span>{index + 1} / {items.length}</span>
       </div>
       <div
-        class="h-1 overflow-hidden rounded bg-gray-200 dark:bg-gray-700"
+        class="sp-track h-1 overflow-hidden rounded bg-gray-200 dark:bg-gray-700"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={items.length}
@@ -184,8 +199,9 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       </div>
     </div>
 
-    <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
-      <TriviaQuestion segments={current.item.question} />
+    <div class="sp-card flex items-start gap-2 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+      <div class="min-w-0 flex-1"><TriviaQuestion segments={current.item.question} /></div>
+      {#if fb && current.status !== 'unanswered'}<FlagToggle state={fb} target="question" />{/if}
     </div>
 
     <div class="flex flex-col gap-2">
@@ -193,24 +209,29 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         {@const isChosen = current.chosenAnswer === option}
         {@const isCorrectOption = option === current.item.correctAnswer}
         {@const answered = current.status === 'answered'}
-        <button
-          type="button"
-          disabled={answered}
-          class="rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-default"
-          class:anim-pop={justAnswered && isCorrectOption}
-          class:anim-shake={justAnswered && isChosen && !isCorrectOption}
-          class:bg-green-100={answered && isCorrectOption}
-          class:border-green-500={answered && isCorrectOption}
-          class:bg-red-100={answered && isChosen && !isCorrectOption}
-          class:border-red-500={answered && isChosen && !isCorrectOption}
-          class:dark:bg-green-900={answered && isCorrectOption}
-          class:dark:bg-red-900={answered && isChosen && !isCorrectOption}
-          onclick={() => choose(option)}
-        >
-          <Latex text={option} />
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={answered}
+            class="sp-option min-w-0 flex-1 rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-default"
+            class:anim-pop={justAnswered && isCorrectOption}
+            class:anim-shake={justAnswered && isChosen && !isCorrectOption}
+            class:opt-correct={answered && isCorrectOption}
+            class:opt-wrong={answered && isChosen && !isCorrectOption}
+            onclick={() => choose(option)}
+          >
+            <Latex text={option} />
+            {#if answered && isCorrectOption}<span class="ml-2 text-xs font-semibold">✓ Correct answer</span>{/if}
+            {#if answered && isChosen && !isCorrectOption}<span class="ml-2 text-xs font-semibold">✗ Your pick</span>{/if}
+          </button>
+          {#if fb && answered}<FlagToggle state={fb} target={optionTarget(option)} />{/if}
+        </div>
       {/each}
     </div>
+
+    {#if current.status === 'unanswered'}
+      <HintLadder hints={current.item.hints} />
+    {/if}
 
     {#if current.status === 'unanswered'}
       <button type="button" class="self-center text-sm text-gray-400 underline" onclick={skip}> Skip </button>
@@ -231,7 +252,8 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         {/key}
       {/if}
 
-      <div class="anim-rise rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
+      <div class="sp-card anim-rise flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
+        <div class="min-w-0 flex-1">
         <Latex text={current.item.explanation} />
         <a
           href={current.item.learnMoreArticle}
@@ -239,19 +261,19 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
           rel="noreferrer"
           class="mt-2 block text-blue-600 underline">Learn more</a
         >
+        </div>
+        {#if fb}<FlagToggle state={fb} target="explanation" />{/if}
       </div>
+
+      <HintLadder hints={current.item.hints} feedback={fb} showAll />
 
       <Provenance provenance={current.provenance} />
 
-      {#key current.item.id}
-        <FeedbackControl feedback={current.feedback} onSubmit={submitFeedback} />
-      {/key}
+      {#if fb}<FeedbackControl state={fb} />{/if}
 
-      <button type="button" class="rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={next}> Next </button>
+      <button type="button" class="sp-btn sp-primary rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={next}> Next </button>
     {:else if current.status === 'skipped'}
-      {#key current.item.id}
-        <FeedbackControl feedback={current.feedback} onSubmit={submitFeedback} />
-      {/key}
+      {#if fb}<FeedbackControl state={fb} />{/if}
     {/if}
   {/if}
 </div>

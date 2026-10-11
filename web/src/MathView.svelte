@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import {
   answerQuiz,
   listQuiz,
@@ -7,6 +8,9 @@ import {
   sendFeedback,
 } from './lib/api';
 import FeedbackControl from './lib/FeedbackControl.svelte';
+import { FeedbackState } from './lib/feedbackState.svelte';
+import FlagToggle from './lib/FlagToggle.svelte';
+import HintLadder from './lib/HintLadder.svelte';
 import Latex from './lib/Latex.svelte';
 import { swipeNav } from './lib/swipeNav';
 
@@ -53,9 +57,17 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       difficulty: feedback.difficulty ?? null,
       reaction: feedback.reaction ?? null,
       notes: feedback.notes ?? null,
+      targets: feedback.targets ?? [],
+      reasons: feedback.reasons ?? [],
     },
   };
 }
+
+let fb = $state<FeedbackState | null>(null);
+$effect(() => {
+  const id = current?.item.id;
+  fb = id ? untrack(() => new FeedbackState(current?.feedback ?? null, submitFeedback)) : null;
+});
 </script>
 
 <div class="mx-auto flex max-w-md flex-col gap-4 p-4" use:swipeNav={{ onSwipeRight: goBack }}>
@@ -73,28 +85,25 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
       {index + 1} / {items.length} · {current.item.tier} · {current.item.domain}
     </div>
 
-    <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
-      <Latex text={current.item.promptLatex} class="text-lg" />
+    <div class="sp-card flex items-start gap-2 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+      <Latex text={current.item.promptLatex} class="min-w-0 flex-1 text-lg" />
+      {#if fb}<FlagToggle state={fb} target="question" />{/if}
     </div>
 
     {#if current.status !== 'answered'}
-      <div class="flex flex-col gap-2">
-        {#each current.item.hints as hint (hint)}
-          <details class="rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700">
-            <summary class="cursor-pointer text-gray-500">Hint</summary>
-            <div class="mt-2"><Latex text={hint} /></div>
-          </details>
-        {/each}
-      </div>
+      <HintLadder hints={current.item.hints} feedback={fb} />
 
       <p class="text-center text-sm text-gray-500">Work it out on paper, then reveal the solution.</p>
-      <button type="button" class="rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={reveal}>
+      <button type="button" class="sp-btn sp-primary rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={reveal}>
         Reveal solution
       </button>
     {:else}
-      <div class="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
-        <p class="font-semibold">Final answer:</p>
-        <Latex text={current.item.finalAnswer} />
+      <div class="sp-card flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold">Final answer:</p>
+          <Latex text={current.item.finalAnswer} />
+        </div>
+        {#if fb}<FlagToggle state={fb} target="explanation" />{/if}
       </div>
 
       <div class="flex flex-col gap-2">
@@ -105,11 +114,11 @@ async function submitFeedback(feedback: Parameters<typeof sendFeedback>[2]) {
         {/each}
       </div>
 
-      {#key current.item.id}
-        <FeedbackControl feedback={current.feedback} onSubmit={submitFeedback} />
-      {/key}
+      <HintLadder hints={current.item.hints} feedback={fb} showAll />
 
-      <button type="button" class="rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={next}> Next </button>
+      {#if fb}<FeedbackControl state={fb} />{/if}
+
+      <button type="button" class="sp-btn sp-primary rounded-xl bg-blue-600 py-3 font-medium text-white" onclick={next}> Next </button>
     {/if}
   {/if}
 </div>

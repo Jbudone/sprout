@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Apply the saved theme before first paint so there is no flash.
+      try {
+        var t = localStorage.getItem('sprout-theme');
+        var r = document.documentElement;
+        if (t && t !== 'classic') {
+          r.dataset.theme = t;
+          if (localStorage.getItem('sprout-theme-dark') === '1') r.classList.add('dark');
+        } else if (matchMedia('(prefers-color-scheme: dark)').matches) r.classList.add('dark');
+      } catch (e) {}
+    </script>
     <title>Math & Trivia Quiz</title>
   </head>
   <body>

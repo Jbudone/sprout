@@ -33,13 +33,13 @@ const flows: Flow[] = [
       {
         title: 'Mechanical check',
         who: 'Plain code, no AI',
-        note: 'Distinct hints and options, one clear answer, no excluded terms, no near-duplicate question.',
+        note: 'One to three distinct hints that never state the answer, distinct options, one clear answer, no excluded terms, no near-duplicate question.',
         kind: 'auto',
       },
       {
         title: 'Reviewers',
         who: 'Reviewer models (your picks)',
-        note: 'Each checks facts, difficulty and wording. Pass needs all (or most) to agree.',
+        note: 'Each checks facts, difficulty, wording and that hints get steadily more helpful. They skip anything on your ignore list (flag an issue as "Don\'t care" on a card). Pass needs all (or most) to agree.',
         kind: 'auto',
       },
       {
