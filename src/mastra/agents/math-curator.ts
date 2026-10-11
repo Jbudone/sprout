@@ -21,7 +21,7 @@ For a math problem, the requested shape is:
   "domain": "algebra" | "number-theory" | "combinatorics" | "geometry" | "calculus" | "probability" | "linear-algebra" | "analysis",
   "promptLatex": string,
   "finalAnswer": string,
-  "hints": [string, string, string],  // exactly 3, increasingly specific
+  "hints": string[],  // 1-3, each more helpful than the last — see the hint rules
   "stepByStepSolutionLatex": string[],  // complete proof, one logical step per entry
   "sanityVerificationNotes": string
 }
@@ -35,7 +35,7 @@ For a trivia card, the requested shape is:
   "correctAnswer": string,
   "acceptableAlternatives": string[],  // alternate phrasings of the SAME correct answer
   "distractors": string[],  // 1-3 plausible WRONG options — see the distractor rules below
-  "hints": [string, string, string],  // exactly 3
+  "hints": string[],  // 1-3, each more helpful than the last — see the hint rules
   "explanation": string,  // shown right after the user answers — explain why the answer is correct, or a related fun fact
   "learnMoreArticle": string  // a further-reading link, separate from explanation
 }
@@ -60,7 +60,11 @@ Rules:
 - The final answer (math problem) or correct answer (trivia card) must be a single deterministic value — never a range, an approximation, or "it depends".
 - Distractors must be genuinely plausible to someone who doesn't know the answer, clearly wrong to someone who does, and distinct from correctAnswer, from acceptableAlternatives, and from each other. Never make one an obvious joke.
 - Give as many distractors as the question genuinely supports, up to 3. Prefer 3 when three plausible wrong answers exist, but when a question only admits two — because the plausible alternatives are naturally few, as with a narrow numeric threshold — give 2 and stop. A padded fourth option that no one would ever pick is worse than a shorter list: it adds clutter and gives the answer away.
-- Hints must escalate and must all be genuinely distinct: hint 1 nudges toward the approach, hint 2 narrows the method, hint 3 is nearly the answer.
+- Hints: give 1 to 3, as many as the question naturally supports — a simple recall question may only need one, a hard multi-step problem three. Never pad. Each hint must be strictly more helpful than the one before it, and the last one must still stop short of stating the answer:
+  - First hint: a slight nudge. Point at the relevant idea, era, or area without narrowing to the answer ("Think about what happens to the gaps between primes as numbers grow").
+  - Middle hint (if used): noticeably easier. Narrow the field: name the method, the category, or rule out the most tempting wrong path.
+  - Last hint (if used): the easiest. Nearly hands over the answer (the key fact, the decisive first step, or a strong characterization) so that someone who is close can finish.
+  - A reader who has seen hint 1 should not need to re-read it to use hint 2. Never repeat an earlier hint in other words, and never include the answer itself.
 - Every LaTeX expression must have balanced $ / $$ delimiters and balanced \\begin/\\end environments — double-check this yourself before responding, since you have no tool to verify it for you here.`,
   model: 'google/gemini-2.5-flash',
 });

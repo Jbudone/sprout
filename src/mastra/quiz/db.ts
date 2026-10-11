@@ -31,6 +31,10 @@ export async function getQuizClient(): Promise<Db> {
           updated_at ${key} NOT NULL
         )
       `);
+      // Which parts of the card the feedback is about, and why (JSON arrays).
+      const feedbackCols = await client.columns('quiz_feedback');
+      if (!feedbackCols.includes('targets')) await client.execute('ALTER TABLE quiz_feedback ADD COLUMN targets TEXT');
+      if (!feedbackCols.includes('reasons')) await client.execute('ALTER TABLE quiz_feedback ADD COLUMN reasons TEXT');
       // SQLite only: migrate the older not_fun boolean column (pre-dates the
       // "standout" positive-feedback option) into the not_fun/standout reaction field.
       if (client.dialect === 'sqlite') {
@@ -71,8 +75,22 @@ export type FeedbackRow = {
   difficulty: Difficulty | null;
   reaction: Reaction | null;
   notes: string | null;
+  // Parts of the card flagged: 'question', 'explanation', 'hints', 'hint:<n>', 'option:<text>'.
+  targets: string[];
+  // Reason chip ids (see FeedbackControl) explaining the flags.
+  reasons: string[];
   updatedAt: string;
 };
+
+function parseList(value: unknown): string[] {
+  if (typeof value !== 'string' || !value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 export async function getProgressForKind(kind: QuizKind): Promise<Map<string, ProgressRow>> {
   const client = await getQuizClient();
@@ -108,6 +126,8 @@ export async function getFeedbackForKind(kind: QuizKind): Promise<Map<string, Fe
       difficulty: (row.difficulty as Difficulty | null) ?? null,
       reaction: (row.reaction as Reaction | null) ?? null,
       notes: (row.notes as string | null) ?? null,
+      targets: parseList(row.targets),
+      reasons: parseList(row.reasons),
       updatedAt: row.updated_at as string,
     });
   }
@@ -152,16 +172,20 @@ export async function recordFeedback(input: {
   difficulty?: Difficulty | null;
   reaction?: Reaction | null;
   notes?: string | null;
+  targets?: string[];
+  reasons?: string[];
 }): Promise<void> {
   const client = await getQuizClient();
   await client.execute({
-    sql: upsertSql(client.dialect, 'quiz_feedback', ['item_id'], ['item_id', 'kind', 'difficulty', 'reaction', 'notes', 'updated_at']),
+    sql: upsertSql(client.dialect, 'quiz_feedback', ['item_id'], ['item_id', 'kind', 'difficulty', 'reaction', 'notes', 'targets', 'reasons', 'updated_at']),
     args: [
       input.itemId,
       input.kind,
       input.difficulty ?? null,
       input.reaction ?? null,
       input.notes ?? null,
+      JSON.stringify(input.targets ?? []),
+      JSON.stringify(input.reasons ?? []),
       new Date().toISOString(),
     ],
   });

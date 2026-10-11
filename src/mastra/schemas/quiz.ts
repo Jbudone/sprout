@@ -61,8 +61,8 @@ export const QuestionSegmentSchema = z.object({
 export type QuestionSegment = z.infer<typeof QuestionSegmentSchema>;
 
 /**
- * A weekly advanced math problem: single deterministic answer, exactly three
- * tiered hints, and a complete step-by-step derivation.
+ * A weekly advanced math problem: single deterministic answer, one to three
+ * escalating hints, and a complete step-by-step derivation.
  */
 export const MathProblemSchema = z.object({
   id: z.string().min(1),
@@ -71,10 +71,11 @@ export const MathProblemSchema = z.object({
   domain: z.enum(MATH_DOMAINS),
   promptLatex: z.string().min(1),
   finalAnswer: z.string().min(1),
-  // A plain fixed-length array rather than z.tuple(): Gemini's structured-output
+  // 1-3 hints, each more helpful than the last (see HINT_RULES in the curator
+  // prompt). A plain array rather than z.tuple(): Gemini's structured-output
   // schema translation (google response_schema) only supports a single `items`
   // schema for arrays, not a per-position tuple schema.
-  hints: z.array(z.string().min(1)).length(3),
+  hints: z.array(z.string().min(1)).min(1).max(3),
   stepByStepSolutionLatex: z.array(z.string().min(1)).min(1),
   sanityVerificationNotes: z.string().default(''),
   // Optional quality score metadata added by the content-author workflow
@@ -101,10 +102,11 @@ export const TriviaCardSchema = z.object({
   // has genuinely plausible wrong answers. Distinct from acceptableAlternatives,
   // which are alternate phrasings of the *correct* answer.
   distractors: z.array(z.string().min(1)).min(1).max(3),
-  // A plain fixed-length array rather than z.tuple(): Gemini's structured-output
+  // 1-3 hints, each more helpful than the last (see HINT_RULES in the curator
+  // prompt). A plain array rather than z.tuple(): Gemini's structured-output
   // schema translation (google response_schema) only supports a single `items`
   // schema for arrays, not a per-position tuple schema.
-  hints: z.array(z.string().min(1)).length(3),
+  hints: z.array(z.string().min(1)).min(1).max(3),
   // Shown to the user immediately after answering — distinct from learnMoreArticle,
   // which is a further-reading link rather than an inline explanation.
   explanation: z.string().min(1),

@@ -4,8 +4,11 @@ import { z } from 'zod';
 import { TriviaCardSchema } from '../schemas/quiz';
 import { addTriviaCard, type Provenance } from './content-db';
 import {
+  addIgnoreRule,
   BriefSchema,
   createRun,
+  deleteIgnoreRule,
+  listIgnoreRules,
   getSettings,
   monthToDateSpend,
   saveSettings,
@@ -160,6 +163,49 @@ const saveSettingsRoute = createRoute({
   handler: async ({ perRunCapUsd, monthlyCapUsd }) => {
     await saveSettings({ perRunCapUsd, monthlyCapUsd });
     return getSettings();
+  },
+});
+
+const IgnoreRuleSchema = z.object({ id: z.number(), rule: z.string(), createdAt: z.string() });
+
+const listIgnoreRulesRoute = createRoute({
+  method: 'GET',
+  path: '/quiz/create/ignore-rules',
+  responseType: 'json',
+  responseSchema: z.object({ rules: z.array(IgnoreRuleSchema) }),
+  summary: 'Reviewer issues the owner has said not to fail cards for',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async () => ({ rules: await listIgnoreRules() }),
+});
+
+const addIgnoreRuleRoute = createRoute({
+  method: 'POST',
+  path: '/quiz/create/ignore-rules',
+  responseType: 'json',
+  bodySchema: z.object({ rule: z.string().min(3).max(300) }),
+  responseSchema: z.object({ rules: z.array(IgnoreRuleSchema) }),
+  summary: 'Add a "reviewers should not care about this" rule',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async ({ rule }) => {
+    await addIgnoreRule(rule);
+    return { rules: await listIgnoreRules() };
+  },
+});
+
+const deleteIgnoreRuleRoute = createRoute({
+  method: 'POST',
+  path: '/quiz/create/ignore-rules/:ruleId/delete',
+  responseType: 'json',
+  pathParamSchema: z.object({ ruleId: z.coerce.number().int() }),
+  responseSchema: z.object({ rules: z.array(IgnoreRuleSchema) }),
+  summary: 'Remove an ignore rule',
+  tags: ['Create'],
+  requiresAuth: false,
+  handler: async ({ ruleId }) => {
+    await deleteIgnoreRule(ruleId);
+    return { rules: await listIgnoreRules() };
   },
 });
 
@@ -322,6 +368,9 @@ const approveAllRoute = createRoute({
 });
 
 export const createApiRoutes = [
+  listIgnoreRulesRoute,
+  addIgnoreRuleRoute,
+  deleteIgnoreRuleRoute,
   statsRoute,
   estimateRoute,
   getSettingsRoute,

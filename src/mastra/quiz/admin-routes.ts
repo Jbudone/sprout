@@ -17,6 +17,7 @@ const TABLES = {
     { table: 'gen_runs', key: 'id' },
     { table: 'pending_cards', key: 'id' },
     { table: 'model_calls', key: 'id' },
+    { table: 'review_ignore_rules', key: 'id' },
     { table: 'settings', key: 'key' },
   ],
   progress: [

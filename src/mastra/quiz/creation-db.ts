@@ -101,6 +101,13 @@ async function db(): Promise<Db> {
       if (!(await client.columns('model_calls')).includes('cost_estimated')) {
         await client.execute('ALTER TABLE model_calls ADD COLUMN cost_estimated INTEGER');
       }
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS review_ignore_rules (
+          id ${t.autoId},
+          rule ${t.long} NOT NULL,
+          created_at ${t.key} NOT NULL
+        )
+      `);
       await client.execute(`CREATE TABLE IF NOT EXISTS settings (\`key\` ${t.key} PRIMARY KEY, \`value\` TEXT NOT NULL)`);
       // A server restart mid-run leaves a run 'running' forever; mark it failed.
       await client.execute({
@@ -336,6 +343,34 @@ export async function getObservedTokens(model: string, role: 'generator' | 'revi
   });
   const row = r.rows[0];
   return Number(row.n) > 0 ? { input: Number(row.i), output: Number(row.o) } : null;
+}
+
+export type IgnoreRule = { id: number; rule: string; createdAt: string };
+
+/**
+ * Things the owner has said reviewers should not fail a card for (e.g.
+ * "Explanation has poor grammar"). Injected into every reviewer prompt.
+ */
+export async function listIgnoreRules(): Promise<IgnoreRule[]> {
+  const client = await db();
+  const r = await client.execute('SELECT id, rule, created_at FROM review_ignore_rules ORDER BY id');
+  return r.rows.map(row => ({ id: Number(row.id), rule: row.rule as string, createdAt: row.created_at as string }));
+}
+
+export async function addIgnoreRule(rule: string): Promise<void> {
+  const client = await db();
+  const text = rule.trim();
+  const existing = await listIgnoreRules();
+  if (existing.some(r => r.rule.toLowerCase() === text.toLowerCase())) return;
+  await client.execute({
+    sql: 'INSERT INTO review_ignore_rules (rule, created_at) VALUES (?, ?)',
+    args: [text, new Date().toISOString()],
+  });
+}
+
+export async function deleteIgnoreRule(id: number): Promise<void> {
+  const client = await db();
+  await client.execute({ sql: 'DELETE FROM review_ignore_rules WHERE id = ?', args: [id] });
 }
 
 export { db as getCreationDb };

@@ -30,7 +30,17 @@ export const verifyTriviaTool = createTool({
     const normalizedHints = hints.map(hint => hint.trim().toLowerCase());
     const hintsValid = new Set(normalizedHints).size === normalizedHints.length;
     if (!hintsValid) {
-      issues.push('Hints are not all distinct — each of the three hints must add new information.');
+      issues.push('Hints are not all distinct — each hint must add new information.');
+    }
+
+    // A hint that states the answer isn't a hint. Very short answers ("3", "Au")
+    // would match unrelated words, so only longer ones are checked.
+    const answerText = correctAnswer.trim().toLowerCase();
+    if (answerText.length >= 4) {
+      const leaky = normalizedHints.findIndex(h => h.includes(answerText));
+      if (leaky !== -1) {
+        issues.push(`Hint ${leaky + 1} contains the correct answer — hints should lead toward it, not state it.`);
+      }
     }
 
     const answerDeterministic = correctAnswer.trim().length > 0 && !NON_DETERMINISTIC_PATTERN.test(correctAnswer);

@@ -13,6 +13,7 @@ import {
   cardIdTaken,
   finishRun,
   getSettings,
+  listIgnoreRules,
   logModelCall,
   monthToDateSpend,
   questionsForDedupe,
@@ -154,8 +155,9 @@ async function generateOne(args: {
   generatorAgent: Agent;
   reviewerAgents: { model: string; agent: Agent }[];
   examples: string;
+  ignoreRules: string[];
 }): Promise<void> {
-  const { budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples } = args;
+  const { budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples, ignoreRules } = args;
   let feedback: string[] = [];
   let lastCard: TriviaCard | null = null;
   let lastReviews: Reviewer[] = [];
@@ -219,6 +221,9 @@ async function generateOne(args: {
               `The card is for a deck called "${brief.deckName}" with this brief:\n${brief.brief}`,
               'Also check FACTUAL ACCURACY: confirm the correct answer is actually correct and every distractor is actually wrong, and that the explanation contains no false claims. If you are not confident a claim is true, fail the card and name the claim. Also fail it if it ignores the brief.',
               JSON.stringify(card, null, 2),
+              ignoreRules.length
+                ? `The owner has said they do NOT care about the following. Do not raise them as issues and do not fail a card because of them:\n- ${ignoreRules.join('\n- ')}`
+                : '',
               examples ? `Calibration examples (not a checklist):\n${examples}` : '',
             ]
               .filter(Boolean)
@@ -258,6 +263,7 @@ export async function runGeneration(runId: string, brief: Brief, config: RunConf
       config.reviewers.map(async model => ({ model, agent: await agentFor(contentQualityAgent, 'reviewer', model) })),
     );
 
+    const ignoreRules = (await listIgnoreRules()).map(r => r.rule);
     const settings = await getSettings();
     const budget: Budget = {
       runCap: settings.perRunCapUsd,
@@ -270,7 +276,7 @@ export async function runGeneration(runId: string, brief: Brief, config: RunConf
     const worker = async () => {
       while (next <= brief.count) {
         const slot = next++;
-        await generateOne({ budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples });
+        await generateOne({ budget, runId, slot, brief, config, deckId, generatorAgent, reviewerAgents, examples, ignoreRules });
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, brief.count) }, worker));

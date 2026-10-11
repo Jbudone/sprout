@@ -14,6 +14,8 @@ const FeedbackEnvelopeSchema = z.object({
   difficulty: z.enum(['too_easy', 'too_hard']).nullable(),
   reaction: z.enum(['not_fun', 'standout']).nullable(),
   notes: z.string().nullable(),
+  targets: z.array(z.string()),
+  reasons: z.array(z.string()),
 });
 
 const DeckRefSchema = z.object({ id: z.string(), name: z.string(), domain: z.string() });
@@ -71,7 +73,7 @@ const listQuizRoute = createRoute({
           status: p?.status ?? ('unanswered' as const),
           chosenAnswer: p?.chosenAnswer ?? null,
           correct: p?.correct ?? null,
-          feedback: f ? { difficulty: f.difficulty, reaction: f.reaction, notes: f.notes } : null,
+          feedback: f ? { difficulty: f.difficulty, reaction: f.reaction, notes: f.notes, targets: f.targets, reasons: f.reasons } : null,
         };
       }),
     };
@@ -155,13 +157,15 @@ const feedbackQuizRoute = createRoute({
     difficulty: z.enum(['too_easy', 'too_hard']).nullable().optional(),
     reaction: z.enum(['not_fun', 'standout']).nullable().optional(),
     notes: z.string().nullable().optional(),
+    targets: z.array(z.string().max(300)).max(20).optional(),
+    reasons: z.array(z.string().max(60)).max(20).optional(),
   }),
   responseSchema: z.object({ success: z.boolean() }),
   summary: 'Record feedback for a quiz item',
   tags: ['Quiz'],
   requiresAuth: false,
-  handler: async ({ kind, itemId, difficulty, reaction, notes }) => {
-    await recordFeedback({ itemId, kind, difficulty, reaction, notes });
+  handler: async ({ kind, itemId, difficulty, reaction, notes, targets, reasons }) => {
+    await recordFeedback({ itemId, kind, difficulty, reaction, notes, targets, reasons });
     return { success: true };
   },
 });
