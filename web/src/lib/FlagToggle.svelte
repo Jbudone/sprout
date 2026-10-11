@@ -13,7 +13,7 @@ const on = $derived(state.has(target));
 
 <button
   type="button"
-  class="flag-toggle inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full {className}"
+  class="flag-toggle inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full {className}"
   class:flag-on={on}
   aria-pressed={on}
   aria-label="Flag: {targetLabel(target)}"

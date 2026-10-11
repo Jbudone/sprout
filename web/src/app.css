@@ -108,6 +108,16 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
 }
+/* gray-100..300 double as borders/panels in themes, so text using them (the
+   dark: variants especially) would vanish. Point text at ink/muted instead. */
+:root[data-theme]:not([data-theme='classic']) :is(.text-gray-100, .text-gray-200),
+:root[data-theme].dark :is(.dark\:text-gray-100, .dark\:text-gray-200) {
+  color: var(--ink);
+}
+:root[data-theme]:not([data-theme='classic']) .text-gray-300,
+:root[data-theme].dark :is(.dark\:text-gray-300, .dark\:text-gray-400, .dark\:text-gray-500) {
+  color: var(--muted);
+}
 
 [data-theme]:not([data-theme='classic']) body {
   color: var(--ink);
