@@ -252,6 +252,7 @@ export type PendingCard = {
   reviewers: Reviewer[];
   issues: string[];
   createdAt: string;
+  feedback: Feedback | null;
 };
 
 export function listModels(): Promise<{

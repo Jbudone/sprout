@@ -20,6 +20,7 @@ import {
   RunConfigSchema,
   setCardStatus,
 } from './creation-db';
+import { getFeedbackForKind } from './db';
 import { slugify } from './decks';
 import { runGeneration } from './generate';
 import { estimateRun } from './pricing';
@@ -27,6 +28,13 @@ import { computeStats } from './stats';
 import { DEFAULT_GENERATOR, DEFAULT_REVIEWERS, MODEL_OPTIONS, providerAvailable, providerOf } from './models';
 
 const ReviewerSchema = z.object({ model: z.string(), passed: z.boolean(), issues: z.array(z.string()) });
+const FeedbackEnvelopeSchema = z.object({
+  difficulty: z.enum(['too_easy', 'too_hard']).nullable(),
+  reaction: z.enum(['not_fun', 'standout']).nullable(),
+  notes: z.string().nullable(),
+  targets: z.array(z.string()),
+  reasons: z.array(z.string()),
+});
 const CardStatusSchema = z.enum(['pending', 'approved', 'rejected', 'auto_rejected']);
 
 const PendingCardSchema = z.object({
@@ -283,14 +291,31 @@ const getRunRoute = createRoute({
   path: '/quiz/create/runs/:runId',
   responseType: 'json',
   pathParamSchema: z.object({ runId: z.string() }),
-  responseSchema: z.object({ run: RunSchema, cards: z.array(PendingCardSchema) }),
-  summary: 'One generation run and the cards it produced so far',
+  responseSchema: z.object({
+    run: RunSchema,
+    cards: z.array(PendingCardSchema.extend({ feedback: FeedbackEnvelopeSchema.nullable() })),
+  }),
+  summary: 'One generation run and the cards it produced so far, with any feedback given on them',
   tags: ['Create'],
   requiresAuth: false,
   handler: async ({ runId }) => {
     const run = await getRun(runId);
     if (!run) throw new Error(`No run with id "${runId}".`);
-    return { run, cards: await listRunCards(runId) };
+    // Feedback is keyed by the card's own id, so it carries over to the deck
+    // card when approved and shows up in the Review tab.
+    const [cards, feedback] = await Promise.all([listRunCards(runId), getFeedbackForKind('trivia')]);
+    return {
+      run,
+      cards: cards.map(c => {
+        const f = feedback.get(c.card.id);
+        return {
+          ...c,
+          feedback: f
+            ? { difficulty: f.difficulty, reaction: f.reaction, notes: f.notes, targets: f.targets, reasons: f.reasons }
+            : null,
+        };
+      }),
+    };
   },
 });
 

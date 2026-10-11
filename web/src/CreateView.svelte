@@ -20,9 +20,15 @@ import {
   type Run,
   type RunConfig,
   rejectCard,
+  sendFeedback,
   startRun,
 } from './lib/api';
 import { domainLabel } from './lib/deckFilter';
+import FeedbackControl from './lib/FeedbackControl.svelte';
+import { FeedbackState } from './lib/feedbackState.svelte';
+import { optionTarget } from './lib/feedbackReasons';
+import FlagToggle from './lib/FlagToggle.svelte';
+import HintLadder from './lib/HintLadder.svelte';
 import Latex from './lib/Latex.svelte';
 import { seededShuffle } from './lib/shuffle';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
@@ -110,6 +116,22 @@ let run = $state<Run | null>(null);
 let cards = $state<PendingCard[]>([]);
 let rejecting = $state<string | null>(null);
 
+// Feedback on a generated card is saved against the card's own id, so it stays
+// with the card once approved (and shows in the Review tab). One state per card.
+const feedbackStates = new Map<string, FeedbackState>();
+function fbFor(c: PendingCard): FeedbackState {
+  let fb = feedbackStates.get(c.id);
+  if (!fb) {
+    fb = new FeedbackState(c.feedback, (f) => {
+      sendFeedback('trivia', c.card.id, f).catch((e) => {
+        actionError = e instanceof Error ? e.message : String(e);
+      });
+    });
+    feedbackStates.set(c.id, fb);
+  }
+  return fb;
+}
+
 // Spoiler-free mode: cards show shuffled options to try, and the answer,
 // explanation and reviewer notes stay hidden until you answer or reveal.
 let spoilerFree = $state(loadSpoilerFree());
@@ -169,6 +191,7 @@ async function openRun(id: string) {
   selectedId = id;
   rejecting = null;
   actionError = null;
+  feedbackStates.clear();
   const res = await getRun(id);
   run = res.run;
   cards = res.cards;
@@ -536,6 +559,7 @@ function toggleReviewer(id: string) {
       {#if actionError}<p class="text-sm text-red-600">{actionError}</p>{/if}
 
       {#each cards as c (c.id)}
+        {@const fb = !hidden(c.id) && c.status !== 'rejected' ? fbFor(c) : null}
         <article class="flex flex-col gap-2 rounded-2xl border border-gray-200 p-3 dark:border-gray-700">
           <div class="flex justify-between text-xs text-gray-400">
             <span>{c.card.category} · elo {c.card.eloRating}</span>
@@ -546,7 +570,10 @@ function toggleReviewer(id: string) {
             >
           </div>
 
-          <TriviaQuestion segments={c.card.question} />
+          <div class="flex items-start gap-2">
+            <div class="min-w-0 flex-1"><TriviaQuestion segments={c.card.question} /></div>
+            {#if fb}<FlagToggle state={fb} target="question" />{/if}
+          </div>
 
           {#if hidden(c.id)}
             <div class="flex flex-col gap-1 text-sm">
@@ -570,14 +597,17 @@ function toggleReviewer(id: string) {
               {#each seededShuffle([c.card.correctAnswer, ...c.card.distractors], c.id) as option (option)}
                 {@const isCorrect = option === c.card.correctAnswer}
                 {@const isChosen = chosen[c.id] === option}
-                <li
-                  class="rounded-lg border px-3 py-1 {isCorrect
-                    ? 'border-green-500 bg-green-100 dark:bg-green-900'
-                    : isChosen
-                      ? 'border-red-500 bg-red-100 dark:bg-red-900'
-                      : 'border-gray-200 text-gray-500 dark:border-gray-700'}"
-                >
-                  <Latex text={option} />
+                <li class="flex items-center gap-2">
+                  <div
+                    class="min-w-0 flex-1 rounded-lg border px-3 py-1 {isCorrect
+                      ? 'border-green-500 bg-green-100 dark:bg-green-900'
+                      : isChosen
+                        ? 'border-red-500 bg-red-100 dark:bg-red-900'
+                        : 'border-gray-200 text-gray-500 dark:border-gray-700'}"
+                  >
+                    <Latex text={option} />
+                  </div>
+                  {#if fb}<FlagToggle state={fb} target={optionTarget(option)} />{/if}
                 </li>
               {/each}
             </ul>
@@ -595,17 +625,13 @@ function toggleReviewer(id: string) {
                 Also accepted: {c.card.acceptableAlternatives.join(' · ')}
               </p>
             {/if}
-            <p class="text-sm text-gray-600 dark:text-gray-300"><Latex text={c.card.explanation} /></p>
+            <div class="flex items-start gap-2">
+              <p class="min-w-0 flex-1 text-sm text-gray-600 dark:text-gray-300"><Latex text={c.card.explanation} /></p>
+              {#if fb}<FlagToggle state={fb} target="explanation" />{/if}
+            </div>
           {/if}
 
-          <details class="rounded-xl border border-gray-200 p-2 text-sm dark:border-gray-700">
-            <summary class="cursor-pointer text-gray-500 dark:text-gray-400">Hints</summary>
-            <ol class="mt-2 flex list-decimal flex-col gap-1 pl-5">
-              {#each c.card.hints as hint (hint)}
-                <li><Latex text={hint} /></li>
-              {/each}
-            </ol>
-          </details>
+          <HintLadder hints={c.card.hints} feedback={fb} showAll={!!fb} />
 
           <p class="text-xs text-gray-400">
             {c.attempts} attempt{c.attempts === 1 ? '' : 's'}
@@ -647,6 +673,8 @@ function toggleReviewer(id: string) {
             <p class="text-xs text-gray-400">Reviewer notes hidden until you answer or reveal.</p>
           {/if}
           {#if c.rejectReason}<p class="text-xs text-gray-500">Rejected: {c.rejectReason}</p>{/if}
+
+          {#if fb}<FeedbackControl state={fb} />{/if}
 
           {#if c.status === 'pending' || c.status === 'auto_rejected'}
             {#if rejecting === c.id}
