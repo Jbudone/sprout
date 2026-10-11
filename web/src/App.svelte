@@ -130,4 +130,8 @@ async function handleResetClick() {
       <TriviaView />
     {/if}
   {/key}
+
+  <footer class="py-3 text-center text-xs text-gray-500 dark:text-gray-400" title="Build {__APP_BUILT__}">
+    v{__APP_VERSION__} · built {__APP_BUILT__.slice(0, 16).replace('T', ' ')} UTC
+  </footer>
 </div>
