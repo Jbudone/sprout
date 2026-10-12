@@ -5,7 +5,9 @@ import {
   type Deck,
   listDecks,
   listQuiz,
+  listRatings,
   type QuizListItem,
+  type RatingChange,
   sendFeedback,
   skipQuiz,
   type TriviaCard,
@@ -29,6 +31,8 @@ import Provenance from './lib/Provenance.svelte';
 import { seededShuffle } from './lib/shuffle';
 import { swipeNav } from './lib/swipeNav';
 import TriviaQuestion from './lib/TriviaQuestion.svelte';
+import LevelChip from './lib/LevelChip.svelte';
+import { categoryLabel, feelFor, levelFor, START_RATING } from './lib/levels';
 
 let allItems = $state<QuizListItem<TriviaCard>[]>([]);
 let decks = $state<Deck[]>([]);
@@ -42,12 +46,30 @@ let error = $state<string | null>(null);
 // Only relevant right after the user clicks an option this session — drives
 // the correct/wrong flash. Reset whenever the index changes.
 let browsing = $state(false);
-let justAnswered = $state<{ correct: boolean } | null>(null);
+let justAnswered = $state<{ correct: boolean; rating: RatingChange | null } | null>(null);
+// Your Elo per category; a category you haven't answered yet sits at the start rating.
+let ratings = $state<Record<string, number>>({});
 
 const current = $derived(items[index]);
 const playedCount = $derived(
   items.filter((i) => i.status !== 'unanswered').length,
 );
+// The feel of a card is judged against your rating *before* it was answered,
+// so the badge doesn't change under you the moment you pick.
+const feel = $derived(
+  current
+    ? feelFor(
+        current.item.eloRating,
+        justAnswered?.rating?.before ?? ratings[current.item.category] ?? START_RATING,
+      )
+    : null,
+);
+const levelUp = $derived.by(() => {
+  const r = justAnswered?.rating;
+  if (!r) return null;
+  const now = levelFor(r.after);
+  return now.index > levelFor(r.before).index ? now : null;
+});
 const options = $derived(
   current
     ? seededShuffle(
@@ -85,8 +107,13 @@ function changeFilter(next: string) {
 }
 
 $effect(() => {
-  Promise.all([listQuiz<TriviaCard>('trivia'), listDecks()])
-    .then(([res, deckRes]) => {
+  Promise.all([
+    listQuiz<TriviaCard>('trivia'),
+    listDecks(),
+    listRatings().catch(() => ({ ratings: [] })),
+  ])
+    .then(([res, deckRes, ratingRes]) => {
+      ratings = Object.fromEntries(ratingRes.ratings.map((r) => [r.category, r.rating]));
       allItems = res.items;
       decks = deckRes.decks;
       filter = validFilter(filter, decks);
@@ -121,7 +148,8 @@ async function choose(option: string) {
     chosenAnswer: option,
     correct: result.correct,
   });
-  justAnswered = { correct: result.correct ?? false };
+  justAnswered = { correct: result.correct ?? false, rating: result.rating };
+  if (result.rating) ratings[result.rating.category] = result.rating.after;
 }
 
 async function skip() {
@@ -199,7 +227,17 @@ $effect(() => {
       </div>
     </div>
 
-    <div class="sp-card flex items-start gap-2 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+    <div class="flex items-center justify-between gap-2">
+      <LevelChip category={current.item.category} rating={ratings[current.item.category] ?? START_RATING} />
+      {#if feel}<span class="feel-badge feel-{feel.feel} shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" title="Card elo {current.item.eloRating}">{feel.label}</span>{/if}
+    </div>
+
+    <div
+      class="sp-card flex items-start gap-2 rounded-2xl border border-gray-200 p-4 dark:border-gray-700"
+      class:feel-card-boss={feel?.feel === 'boss'}
+      class:feel-card-stroll={feel?.feel === 'stroll'}
+      class:anim-boom={justAnswered?.correct && feel?.feel === 'boss'}
+    >
       <div class="min-w-0 flex-1"><TriviaQuestion segments={current.item.question} /></div>
       {#if fb && current.status !== 'unanswered'}<FlagToggle state={fb} target="question" />{/if}
     </div>
@@ -247,8 +285,18 @@ $effect(() => {
             class:bg-red-100={!justAnswered.correct}
             class:text-red-800={!justAnswered.correct}
           >
-            {justAnswered.correct ? 'Correct! 🎉' : 'Not quite.'}
+            {justAnswered.correct ? (feel?.feel === 'boss' ? 'Boss defeated! 🔥' : 'Correct! 🎉') : 'Not quite.'}
+            {#if justAnswered.rating}
+              <span class="ml-1 text-xs font-medium opacity-80">
+                {justAnswered.rating.after >= justAnswered.rating.before ? '+' : '−'}{Math.abs(Math.round(justAnswered.rating.after - justAnswered.rating.before))}
+              </span>
+            {/if}
           </div>
+          {#if levelUp}
+            <div class="anim-bloom sp-card rounded-xl border border-gray-200 p-3 text-center font-semibold dark:border-gray-700">
+              {levelUp.emoji} Level up! {categoryLabel(current.item.category)} is now {levelUp.name}
+            </div>
+          {/if}
         {/key}
       {/if}
 

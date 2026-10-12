@@ -31,6 +31,17 @@ export async function getQuizClient(): Promise<Db> {
           updated_at ${key} NOT NULL
         )
       `);
+      // Player rating per trivia category. Deliberately not cleared by
+      // resetProgress: it is your level, not a record of which cards you saw.
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS category_ratings (
+          category ${key} PRIMARY KEY,
+          rating ${client.dialect === 'mysql' ? 'DOUBLE' : 'REAL'} NOT NULL,
+          answered INTEGER NOT NULL,
+          correct INTEGER NOT NULL,
+          updated_at ${key} NOT NULL
+        )
+      `);
       // Which parts of the card the feedback is about, and why (JSON arrays).
       const feedbackCols = await client.columns('quiz_feedback');
       if (!feedbackCols.includes('targets')) await client.execute('ALTER TABLE quiz_feedback ADD COLUMN targets TEXT');
@@ -189,4 +200,66 @@ export async function recordFeedback(input: {
       new Date().toISOString(),
     ],
   });
+}
+
+// ---- category ratings (Elo) ----
+
+export const START_RATING = 1500;
+const K_FACTOR = 32;
+
+export type CategoryRating = {
+  category: string;
+  rating: number;
+  answered: number;
+  correct: number;
+};
+
+export async function getRatings(): Promise<CategoryRating[]> {
+  const client = await getQuizClient();
+  const result = await client.execute('SELECT * FROM category_ratings');
+  return result.rows.map(row => ({
+    category: row.category as string,
+    rating: Number(row.rating),
+    answered: Number(row.answered),
+    correct: Number(row.correct),
+  }));
+}
+
+export async function getProgressRow(itemId: string): Promise<ProgressRow | null> {
+  const client = await getQuizClient();
+  const result = await client.execute({ sql: 'SELECT * FROM quiz_progress WHERE item_id = ?', args: [itemId] });
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    itemId: row.item_id as string,
+    kind: row.kind as QuizKind,
+    status: row.status as ProgressStatus,
+    chosenAnswer: (row.chosen_answer as string | null) ?? null,
+    correct: row.correct === null ? null : Boolean(row.correct),
+    answeredAt: row.answered_at as string,
+  };
+}
+
+/** Standard Elo update of the player's category rating against the card's rating. */
+export async function applyRating(
+  category: string,
+  cardElo: number,
+  correct: boolean,
+): Promise<CategoryRating & { before: number }> {
+  const client = await getQuizClient();
+  const current = (await getRatings()).find(r => r.category === category);
+  const before = current?.rating ?? START_RATING;
+  const expected = 1 / (1 + 10 ** ((cardElo - before) / 400));
+  const after = before + K_FACTOR * ((correct ? 1 : 0) - expected);
+  const next = {
+    category,
+    rating: after,
+    answered: (current?.answered ?? 0) + 1,
+    correct: (current?.correct ?? 0) + (correct ? 1 : 0),
+  };
+  await client.execute({
+    sql: upsertSql(client.dialect, 'category_ratings', ['category'], ['category', 'rating', 'answered', 'correct', 'updated_at']),
+    args: [category, next.rating, next.answered, next.correct, new Date().toISOString()],
+  });
+  return { ...next, before };
 }

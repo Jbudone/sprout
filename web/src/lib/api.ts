@@ -123,11 +123,34 @@ export function listDecks(): Promise<{ decks: Deck[] }> {
   return request('/trivia/decks');
 }
 
+export type RatingChange = {
+  category: string;
+  before: number;
+  after: number;
+  answered: number;
+  correct: number;
+};
+
+export type CategoryRating = {
+  category: string;
+  rating: number;
+  answered: number;
+  correct: number;
+};
+
+export function listRatings(): Promise<{ ratings: CategoryRating[] }> {
+  return request('/trivia/ratings');
+}
+
 export function answerQuiz(
   kind: Kind,
   itemId: string,
   chosenAnswer?: string,
-): Promise<{ success: boolean; correct: boolean | null }> {
+): Promise<{
+  success: boolean;
+  correct: boolean | null;
+  rating: RatingChange | null;
+}> {
   return request(`/${kind}/${encodeURIComponent(itemId)}/answer`, {
     method: 'POST',
     body: JSON.stringify({ chosenAnswer }),

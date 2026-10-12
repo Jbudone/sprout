@@ -489,7 +489,64 @@ body {
   .anim-shake {
     animation: sprout-shake 0.4s ease-out;
   }
+  @keyframes sprout-boom {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.04) rotate(-0.6deg);
+    }
+    60% {
+      transform: scale(0.99) rotate(0.4deg);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes sprout-bloom {
+    0% {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .anim-boom {
+    animation: sprout-boom 0.6s ease-out;
+  }
+  .anim-bloom {
+    animation: sprout-bloom 0.6s ease-out;
+  }
   .anim-rise {
     animation: sprout-rise 0.35s ease-out;
   }
+}
+
+/* ---- Card feel (difficulty vs your category level) ---------------------------
+   Tokens fall back to Tailwind blues/ambers in Classic, which defines none. */
+.feel-badge {
+  border: var(--wc, 1px) solid var(--border, currentColor);
+}
+.feel-stroll {
+  background: var(--good, #dcfce7);
+  color: var(--ink, #14532d);
+}
+.feel-fair {
+  background: var(--panel, #f3f4f6);
+  color: var(--ink, inherit);
+}
+.feel-boss {
+  background: var(--accent-2, #fbbf24);
+  color: var(--accent-2-ink, #1f2937);
+}
+.feel-card-boss {
+  box-shadow: 0 0 0 2px var(--accent, #2563eb), 0 0 18px -2px var(--accent, #2563eb);
+}
+.feel-card-stroll {
+  border-style: dashed;
 }

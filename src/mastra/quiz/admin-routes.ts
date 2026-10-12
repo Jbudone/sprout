@@ -23,6 +23,7 @@ const TABLES = {
   progress: [
     { table: 'quiz_progress', key: 'item_id' },
     { table: 'quiz_feedback', key: 'item_id' },
+    { table: 'category_ratings', key: 'category' },
   ],
 } as const;
 

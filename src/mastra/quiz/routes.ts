@@ -1,7 +1,7 @@
 import { createRoute } from '@mastra/server/server-adapter';
 import { z } from 'zod';
 import { MathProblemSchema, TriviaCardSchema } from '../schemas/quiz';
-import { getFeedbackForKind, getProgressForKind, recordFeedback, recordProgress, resetProgress } from './db';
+import { applyRating, getFeedbackForKind, getProgressForKind, getProgressRow, getRatings, recordFeedback, recordProgress, resetProgress } from './db';
 import { getMathProblemById, getTriviaCardById, listMathProblems } from './content';
 import { listDecks, listTriviaEntries } from './content-db';
 import { adminApiRoutes } from './admin-routes';
@@ -80,6 +80,27 @@ const listQuizRoute = createRoute({
   },
 });
 
+const RatingChangeSchema = z.object({
+  category: z.string(),
+  before: z.number(),
+  after: z.number(),
+  answered: z.number(),
+  correct: z.number(),
+});
+
+const listRatingsRoute = createRoute({
+  method: 'GET',
+  path: '/quiz/trivia/ratings',
+  responseType: 'json',
+  responseSchema: z.object({
+    ratings: z.array(z.object({ category: z.string(), rating: z.number(), answered: z.number(), correct: z.number() })),
+  }),
+  summary: 'Your Elo rating per trivia category (categories you have not answered are absent: 1500)',
+  tags: ['Quiz'],
+  requiresAuth: false,
+  handler: async () => ({ ratings: await getRatings() }),
+});
+
 const DeckSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -106,7 +127,12 @@ const answerQuizRoute = createRoute({
   responseType: 'json',
   pathParamSchema: KindItemParamSchema,
   bodySchema: z.object({ chosenAnswer: z.string().optional() }),
-  responseSchema: z.object({ success: z.boolean(), correct: z.boolean().nullable() }),
+  responseSchema: z.object({
+    success: z.boolean(),
+    correct: z.boolean().nullable(),
+    // Trivia only, and only the first time a card is answered.
+    rating: RatingChangeSchema.nullable(),
+  }),
   summary: 'Record an answer for a quiz item',
   tags: ['Quiz'],
   requiresAuth: false,
@@ -121,15 +147,31 @@ const answerQuizRoute = createRoute({
         normalize(card.correctAnswer) === normalizedChoice ||
         card.acceptableAlternatives.some(alt => normalize(alt) === normalizedChoice);
 
+      const previous = await getProgressRow(itemId);
       await recordProgress({ itemId, kind, status: 'answered', chosenAnswer, correct });
-      return { success: true, correct };
+      // Re-answering after a reset or a repeat call must not move the rating twice.
+      const rating =
+        previous?.status === 'answered'
+          ? null
+          : await applyRating(card.category, card.eloRating, correct);
+      return {
+        success: true,
+        correct,
+        rating: rating && {
+          category: rating.category,
+          before: rating.before,
+          after: rating.rating,
+          answered: rating.answered,
+          correct: rating.correct,
+        },
+      };
     }
 
     const problem = await getMathProblemById(itemId);
     if (!problem) throw new Error(`No math problem found with id "${itemId}".`);
 
     await recordProgress({ itemId, kind, status: 'answered' });
-    return { success: true, correct: null };
+    return { success: true, correct: null, rating: null };
   },
 });
 
@@ -185,4 +227,4 @@ const resetQuizRoute = createRoute({
   },
 });
 
-export const quizApiRoutes = [...adminApiRoutes, ...createApiRoutes, listQuizRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];
+export const quizApiRoutes = [...adminApiRoutes, ...createApiRoutes, listQuizRoute, listRatingsRoute, listDecksRoute, answerQuizRoute, skipQuizRoute, feedbackQuizRoute, resetQuizRoute];

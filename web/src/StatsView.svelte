@@ -1,12 +1,16 @@
 <script lang="ts">
 import {
+  type CategoryRating,
   getStats,
+  listRatings,
   type Settings,
   type StatsSummary,
   saveSettings,
 } from './lib/api';
+import LevelChip from './lib/LevelChip.svelte';
 
 let stats = $state<StatsSummary | null>(null);
+let garden = $state<CategoryRating[]>([]);
 let error = $state<string | null>(null);
 let perRun = $state(1);
 let monthly = $state(5);
@@ -29,6 +33,11 @@ const monthPct = $derived(
 );
 
 async function load() {
+  listRatings()
+    .then((r) => {
+      garden = [...r.ratings].sort((a, b) => b.rating - a.rating);
+    })
+    .catch(() => {});
   try {
     stats = await getStats();
     perRun = stats.settings.perRunCapUsd;
@@ -64,6 +73,22 @@ async function save(e: SubmitEvent) {
   <h1 class="text-lg font-semibold">Model stats and spend</h1>
 
   {#if error}<p class="text-sm text-red-600">{error}</p>{/if}
+
+  <section class="flex flex-col gap-2">
+    <h2 class="font-medium">Your garden</h2>
+    {#if garden.length === 0}
+      <p class="text-sm text-gray-500">Answer some trivia and each category starts growing here.</p>
+    {:else}
+      <ul class="flex flex-col gap-2">
+        {#each garden as g (g.category)}
+          <li class="sp-card flex flex-col gap-1 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+            <LevelChip category={g.category} rating={g.rating} />
+            <span class="text-xs text-gray-500 dark:text-gray-400">{g.correct} of {g.answered} right</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
 
   {#if !stats}
     {#if !error}<p class="text-gray-500">Loading…</p>{/if}
